@@ -1,0 +1,23 @@
+# Dependencies for monorepo builds / deploys
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.git
+.cursor
+*.md
+!README.md
+.env
+.env.*
+!.env.production.example
+test-sales-page*
+apps/web/.next
+apps/api/dist
+packages/*/dist
+**/data
+terminals
+agent-transcripts
+coverage
+*.log
