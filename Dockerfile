@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-ARG NEXT_PUBLIC_API_URL=https://api.aienterprisestudio.com
+ARG NEXT_PUBLIC_API_URL=https://aienterprisestudio.com
 ARG NEXT_PUBLIC_APP_NAME=AI Enterprise Studio
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME

@@ -12,6 +12,9 @@ if [[ ! -f .env.production ]]; then
   exit 1
 fi
 
+# Compose interpolates ${VAR} from `.env` (not `.env.production`).
+cp -f .env.production .env
+
 mkdir -p deploy/certbot/www deploy/certbot/conf
 cp -f deploy/nginx/aienterprisestudio.bootstrap.conf deploy/nginx/aienterprisestudio.conf
 

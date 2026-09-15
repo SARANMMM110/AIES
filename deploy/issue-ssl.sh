@@ -10,7 +10,6 @@ docker compose -f docker-compose.prod.yml run --rm certbot \
   certonly --webroot -w /var/www/certbot \
   -d aienterprisestudio.com \
   -d www.aienterprisestudio.com \
-  -d api.aienterprisestudio.com \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email \
