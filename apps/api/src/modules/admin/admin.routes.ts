@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "@aes/database";
+import { prisma, type Prisma } from "@aes/database";
 import { authenticate, requireAdmin } from "../../middleware/auth";
 import { ok } from "../../utils/response";
 import { APPROVED_PRODUCT_SLUGS } from "../../constants/product-scope";
@@ -18,7 +18,7 @@ const catalogWhere = { slug: { in: [...APPROVED_PRODUCT_SLUGS] } };
 
 adminRouter.get("/dashboard", async (_req, res, next) => {
   try {
-    const demoUserFilter = {
+    const demoUserFilter: Prisma.UserWhereInput = {
       NOT: {
         OR: [
           { email: { endsWith: "@test.local" } },
@@ -33,7 +33,7 @@ adminRouter.get("/dashboard", async (_req, res, next) => {
           { AND: [{ firstName: "Platform" }, { lastName: "Admin" }] },
         ],
       },
-    } as const;
+    };
 
     const [
       customersWithAccess,
