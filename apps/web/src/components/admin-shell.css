@@ -1,0 +1,392 @@
+.admin-shell {
+  --admin-bg: #f3f6f4;
+  --admin-panel: #ffffff;
+  --admin-ink: #101a17;
+  --admin-muted: #5c6b64;
+  --admin-line: #d7e0db;
+  --admin-accent: #c8f04d;
+  --admin-accent-ink: #142018;
+  --admin-side: #0c1411;
+  --admin-side-text: #d7e2dc;
+  --admin-side-muted: #8ea099;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  background:
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(200, 240, 77, 0.1), transparent 55%),
+    linear-gradient(180deg, #eef3f0, var(--admin-bg));
+  color: var(--admin-ink);
+}
+
+html[data-theme="dark"] .admin-shell {
+  --admin-bg: #08100d;
+  --admin-panel: #101a16;
+  --admin-ink: #eef4f0;
+  --admin-muted: #9aaba2;
+  --admin-line: #24312c;
+  --admin-side: #050a08;
+  --admin-side-text: #d5e0da;
+  --admin-side-muted: #7f9188;
+  background:
+    radial-gradient(ellipse 45% 35% at 100% 0%, rgba(200, 240, 77, 0.08), transparent 55%),
+    linear-gradient(180deg, #070d0a, var(--admin-bg));
+}
+
+.admin-shell-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 0.7rem 0.75rem;
+  background: var(--admin-side);
+  color: var(--admin-side-text);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: auto;
+}
+
+.admin-shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.2rem 0.35rem 0.65rem;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-shell-mark {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--admin-accent);
+  color: var(--admin-accent-ink);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.admin-shell-brand strong {
+  display: block;
+  font-size: 0.8rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.admin-shell-brand em {
+  display: block;
+  margin-top: 0.08rem;
+  font-style: normal;
+  font-size: 0.64rem;
+  color: var(--admin-side-muted);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.admin-shell-nav {
+  display: grid;
+  gap: 0.7rem;
+  flex: 1;
+  align-content: start;
+}
+
+.admin-shell-group {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.admin-shell-group-label {
+  margin: 0 0 0.12rem;
+  padding: 0 0.55rem;
+  color: var(--admin-side-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-shell-nav a {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  border-radius: 9px;
+  color: var(--admin-side-text);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.25;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.admin-shell-nav a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.admin-shell-nav a.active {
+  background: color-mix(in srgb, var(--admin-accent) 18%, transparent);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-accent) 35%, transparent);
+}
+
+.admin-shell-foot {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-shell-user {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.55rem;
+  align-items: center;
+  padding: 0.5rem 0.55rem;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-shell-avatar {
+  grid-row: span 2;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(200, 240, 77, 0.18);
+  color: var(--admin-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.admin-shell-user strong {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.admin-shell-user span {
+  display: block;
+  color: var(--admin-side-muted);
+  font-size: 0.66rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.admin-shell-logout {
+  grid-column: 1 / -1;
+  margin-top: 0.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--admin-side-text);
+  border-radius: 999px;
+  padding: 0.38rem 0.65rem;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-shell-logout:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-shell-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 1.1rem;
+  background: color-mix(in srgb, var(--admin-bg) 82%, transparent);
+  border-bottom: 1px solid var(--admin-line);
+  backdrop-filter: blur(12px);
+}
+
+.admin-shell-top-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.admin-shell-menu {
+  display: none;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+  color: var(--admin-ink);
+  border-radius: 999px;
+  padding: 0.38rem 0.75rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-shell-crumb {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.admin-shell-crumb span {
+  color: var(--admin-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-shell-crumb strong {
+  font-size: 0.92rem;
+  letter-spacing: -0.02em;
+}
+
+.admin-shell-home {
+  margin-left: auto;
+  text-decoration: none;
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+  border-radius: 999px;
+  padding: 0.38rem 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.admin-shell-home:hover {
+  border-color: color-mix(in srgb, var(--admin-accent) 50%, var(--admin-line));
+}
+
+.admin-shell-content {
+  padding: 1rem 1.1rem 1.75rem;
+}
+
+.admin-shell-content .page-header {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.admin-shell-content .page-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  letter-spacing: -0.04em;
+  color: var(--admin-ink);
+}
+
+.admin-shell-content .page-sub {
+  margin: 0.25rem 0 0;
+  color: var(--admin-muted);
+  max-width: 42rem;
+  line-height: 1.4;
+  font-size: 0.9rem;
+}
+
+.admin-shell-content .panel,
+.admin-shell-content .reseller-card,
+.admin-shell-content .admin-surface {
+  background: var(--admin-panel);
+  border: 1px solid var(--admin-line);
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(16, 28, 22, 0.035);
+  padding: 0.85rem 0.95rem;
+}
+
+.admin-shell-content .section-heading {
+  margin-bottom: 0.55rem;
+}
+
+.admin-shell-content .section-heading h2 {
+  font-size: 0.98rem;
+}
+
+.admin-shell-content .table tbody td .btn,
+.admin-shell-content .table tbody td .btn-sm {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.admin-shell-content .table tbody td input,
+.admin-shell-content .table tbody td select {
+  font-size: 0.8rem;
+  padding: 0.28rem 0.45rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.admin-shell-content .table tbody td .row-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.admin-shell-content .table thead th,
+.admin-shell-content .table tbody td {
+  font-size: 0.8rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+.admin-shell-content .table tbody td strong {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+
+.admin-shell-backdrop {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-shell-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(240px, 84vw);
+    z-index: 40;
+    transform: translateX(-105%);
+    transition: transform 0.18s ease;
+  }
+
+  .admin-shell.nav-open .admin-shell-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-shell-menu,
+  .admin-shell-backdrop {
+    display: inline-flex;
+  }
+
+  .admin-shell-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    background: rgba(8, 14, 12, 0.45);
+  }
+
+  .admin-shell-content {
+    padding: 0.85rem 0.85rem 1.5rem;
+  }
+}

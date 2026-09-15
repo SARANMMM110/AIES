@@ -1,0 +1,65 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { AgencySalesView } from "@/components/sales/AgencySalesView";
+import { AGENCY_SLUGS, fetchAgencyCatalog, fetchSalesCatalog } from "@/lib/sales/catalog";
+import { getAgencySalesCopy } from "@/lib/sales/agency-sales-content";
+
+export const dynamic = "force-dynamic";
+
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ embed?: string; frame?: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const agency = await fetchAgencyCatalog(slug);
+    const copy = getAgencySalesCopy(slug);
+    const title = `${agency.name} — Sales`;
+    const description =
+      copy?.subheadline?.slice(0, 155) ||
+      agency.shortDescription ||
+      `Request access to ${agency.name} from AI Enterprise Studio. No payment on this page.`;
+    return {
+      title,
+      description,
+      openGraph: {
+        title: agency.name,
+        description,
+        url: `/sales/${slug}`,
+        type: "website",
+      },
+      alternates: { canonical: `/sales/${slug}` },
+    };
+  } catch {
+    return { title: "Agency Sales" };
+  }
+}
+
+export default async function AgencySalesPage({ params, searchParams }: Props) {
+  const { slug } = await params;
+  const { embed, frame } = await searchParams;
+  if (!(AGENCY_SLUGS as readonly string[]).includes(slug)) notFound();
+
+  const catalog = await fetchSalesCatalog().catch(() => null);
+  let agency = catalog?.agencies.find((a) => a.slug === slug) ?? null;
+  if (!agency) {
+    try {
+      agency = await fetchAgencyCatalog(slug);
+    } catch {
+      notFound();
+    }
+  }
+  if (!catalog) notFound();
+
+  return (
+    <AgencySalesView
+      agency={agency}
+      agencies={catalog.agencies}
+      suite={catalog.suite}
+      embed={embed === "1"}
+      framed={frame === "1"}
+    />
+  );
+}

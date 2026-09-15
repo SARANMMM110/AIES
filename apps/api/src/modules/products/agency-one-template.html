@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<!-- AI Enterprise Studio — AI Advantage Agency System — v1.0.0 -->
+<!-- Standalone local tool: works offline, no API key required. All data stays in this browser (localStorage). -->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Advantage — Agency Business Builder &amp; Operations System</title>
+<style>
+:root{
+  --bg:#F7F5EE; --ink:#141F1A; --muted:#5C6B62; --card:#FFFFFF; --line:#E6E4D9;
+  --sage:#DCEBDA; --sage-soft:#EAF2E7; --deep:#0E3A2C; --deep-2:#0B2F24;
+  --lime:#D9F464; --lime-ink:#1A2A12; --pill:#D3E7D4; --dot:#CBDCC9;
+  --input:#FFFFFF; --input-line:#DDDBD0; --danger:#B4433A; --shadow:0 1px 2px rgba(20,31,26,.05);
+}
+html[data-theme="dark"]{
+  --bg:#0C1511; --ink:#ECF2ED; --muted:#9CACA1; --card:#141F19; --line:#25332B;
+  --sage:#1A2A21; --sage-soft:#16241C; --deep:#0A2C21; --deep-2:#081F18;
+  --pill:#1F332A; --dot:#22332A; --input:#101A15; --input-line:#2A3A31;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter','Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+  background:var(--bg);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+a{color:inherit}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink);background:var(--input);
+  border:1px solid var(--input-line);border-radius:12px;padding:12px 14px;width:100%;outline:none}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.75}
+input:focus,select:focus,textarea:focus{border-color:var(--deep);box-shadow:0 0 0 3px rgba(14,58,44,.12)}
+html[data-theme="dark"] input:focus,html[data-theme="dark"] select:focus,html[data-theme="dark"] textarea:focus{box-shadow:0 0 0 3px rgba(217,244,100,.15)}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%235C6B62' stroke-width='2' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+.field label{display:block;font-size:14px;font-weight:600;margin-bottom:7px}
+.field label .req{color:var(--danger)}
+.field.err input,.field.err select{border-color:var(--danger)}
+
+/* header */
+header.top{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+.brand{font-weight:800;letter-spacing:.14em;font-size:14px;display:flex;align-items:center;gap:10px}
+.brand .dash{width:22px;height:3px;background:var(--lime);border-radius:2px;display:inline-block}
+.theme{display:flex;align-items:center;gap:10px}
+.theme .sun{color:var(--muted)}
+.seg{display:flex;background:var(--pill);border-radius:999px;padding:4px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:600;color:var(--ink)}
+.seg button.on{background:var(--deep);color:#fff}
+
+/* hero */
+.hero{position:relative;display:grid;grid-template-columns:1.35fr 1fr;gap:34px;padding:26px 0 44px;align-items:start}
+.hero .deco{position:absolute;right:-40px;bottom:-10px;width:220px;height:150px;
+  background-image:radial-gradient(var(--dot) 1.6px,transparent 1.6px);background-size:15px 15px;opacity:.8;z-index:0;pointer-events:none}
+.hero .blob{position:absolute;z-index:0;border-radius:50%;filter:blur(70px);opacity:.55;pointer-events:none}
+.hero .blob.a{width:340px;height:280px;background:#DDECC9;right:120px;top:-40px}
+.hero .blob.b{width:220px;height:220px;background:#EFE9C9;left:-60px;bottom:-40px}
+html[data-theme="dark"] .hero .blob.a{background:#16301F}
+html[data-theme="dark"] .hero .blob.b{background:#20291A}
+.hero>div{position:relative;z-index:1}
+.eyebrow{display:inline-block;background:var(--pill);color:var(--deep);font-size:12px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;padding:8px 16px;border-radius:999px;margin-bottom:18px}
+html[data-theme="dark"] .eyebrow{color:#CFE6C6}
+h1.title{font-size:clamp(44px,6.4vw,68px);font-weight:800;letter-spacing:-.03em;line-height:1.02;margin-bottom:16px}
+.lede{color:var(--muted);font-size:16.5px;max-width:54ch;margin-bottom:26px}
+.feats{display:flex;gap:26px;flex-wrap:wrap}
+.feat{display:flex;align-items:center;gap:11px}
+.feat .ic{width:44px;height:44px;border-radius:12px;background:var(--sage);display:flex;align-items:center;justify-content:center;color:var(--deep);flex:none}
+html[data-theme="dark"] .feat .ic{color:#BFE3B4}
+.feat .tx{font-size:13.5px;font-weight:600;line-height:1.25;max-width:110px}
+
+.gen{background:var(--sage);border-radius:22px;padding:26px 26px 22px;position:relative;overflow:hidden}
+.gen .ghead{display:flex;gap:14px;align-items:center;margin-bottom:14px}
+.gen .chip{width:48px;height:48px;border-radius:14px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--deep);flex:none;box-shadow:var(--shadow)}
+html[data-theme="dark"] .gen .chip{color:#BFE3B4}
+.gen h3{font-size:15px;font-weight:800;letter-spacing:.05em;line-height:1.3}
+.gen p{font-size:14px;color:var(--muted);margin-bottom:16px}
+html[data-theme="dark"] .gen p{color:#AEC2B3}
+.gen .rule{border-top:1px solid rgba(14,58,44,.15);margin:2px 0 14px}
+html[data-theme="dark"] .gen .rule{border-color:#2B3E33}
+.gen .big{display:flex;align-items:baseline;gap:14px}
+.gen .big b{font-size:52px;font-weight:800;letter-spacing:-.03em}
+.gen .big span{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px;margin-bottom:26px;box-shadow:var(--shadow)}
+.chead{display:flex;align-items:flex-start;gap:14px;margin-bottom:8px}
+.chead .ic{width:46px;height:46px;border-radius:13px;background:var(--deep);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.chead .ic.sage{background:var(--sage);color:var(--deep)}
+html[data-theme="dark"] .chead .ic.sage{color:#BFE3B4}
+.chead h2{font-size:21px;font-weight:800;letter-spacing:-.01em}
+.chead .sub{font-size:14px;color:var(--muted);margin-top:2px}
+.chead .right{margin-left:auto;display:flex;align-items:center;gap:14px;flex:none}
+.steppill{display:none;background:var(--pill);color:var(--deep);font-size:11.5px;font-weight:700;letter-spacing:.08em;padding:7px 13px;border-radius:999px;white-space:nowrap}
+html[data-theme="dark"] .steppill{color:#CFE6C6}
+.sect{padding:20px 0 4px}
+.sect + .sect{border-top:1px solid var(--line);margin-top:16px}
+.sect h4{font-size:15.5px;font-weight:700;margin-bottom:3px}
+.sect .hint{font-size:13.5px;color:var(--muted);margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px 18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.mini{max-width:340px}
+
+/* services */
+.svc{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:13px;padding:13px 15px;
+  background:var(--card);user-select:none;cursor:pointer;transition:background .12s,border-color .12s;font-size:14.5px;font-weight:500}
+.svc:hover{border-color:var(--deep)}
+.svc.on{background:var(--sage-soft);border-color:var(--deep)}
+.svc .box{width:19px;height:19px;border:2px solid var(--input-line);border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--input)}
+.svc.on .box{background:var(--deep);border-color:var(--deep)}
+.svc .box svg{opacity:0}
+.svc.on .box svg{opacity:1}
+.linkbtn{border:0;background:none;font-size:13.5px;font-weight:700;color:var(--deep);text-decoration:underline;text-underline-offset:3px}
+html[data-theme="dark"] .linkbtn{color:#CFE6C6}
+.countpill{background:var(--pill);color:var(--deep);font-size:11.5px;font-weight:700;letter-spacing:.06em;padding:7px 13px;border-radius:999px}
+html[data-theme="dark"] .countpill{color:#CFE6C6}
+
+/* cta band */
+.cta{background:var(--deep);border-radius:22px;padding:24px 26px;display:flex;align-items:center;gap:18px;color:#fff;margin-bottom:26px}
+.cta .ic{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex:none;color:var(--lime)}
+.cta h3{font-size:19px;font-weight:800}
+.cta p{font-size:14px;color:#BCD3C5;margin-top:2px}
+.cta .go{margin-left:auto;flex:none;background:var(--lime);color:var(--lime-ink);border:0;border-radius:14px;
+  padding:15px 22px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px;transition:transform .1s}
+.cta .go:hover{transform:translateY(-1px)}
+.cta .warn{font-size:13px;color:#F0C9A6;margin-top:6px;display:none}
+.cta.invalid .warn{display:block}
+
+/* step 2 + 3 */
+.backrow{display:none;display:flex;align-items:center;justify-content:space-between;margin:6px 0 20px}
+.backbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.backbtn:hover{border-color:var(--deep)}
+.group{margin-bottom:8px}
+.group h4{font-size:16px;font-weight:800;margin:18px 0 4px}
+.group .gcount{font-size:13px;color:var(--muted);margin-bottom:12px}
+.wfgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px}
+.wf{border:1px solid var(--line);border-radius:15px;padding:16px 17px;background:var(--card);display:flex;flex-direction:column;gap:8px;transition:border-color .12s}
+.wf:hover{border-color:var(--deep)}
+.wf .num{width:30px;height:30px;border-radius:9px;background:var(--sage);color:var(--deep);font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+html[data-theme="dark"] .wf .num{color:#CFE6C6}
+.wf b{font-size:15px;line-height:1.3}
+.wf p{font-size:13px;color:var(--muted);flex:1}
+.wf .open{align-self:flex-start;border:0;background:var(--sage);color:var(--deep);font-weight:700;font-size:13px;border-radius:10px;padding:9px 14px}
+html[data-theme="dark"] .wf .open{color:#CFE6C6}
+.wf .open:hover{background:var(--deep);color:#fff}
+.wf .done{font-size:12px;color:var(--deep);font-weight:700}
+html[data-theme="dark"] .wf .done{color:#BFE3B4}
+
+.catchip{display:inline-block;background:var(--pill);color:var(--deep);font-size:11.5px;font-weight:700;letter-spacing:.06em;padding:6px 12px;border-radius:999px;margin-bottom:10px}
+html[data-theme="dark"] .catchip{color:#CFE6C6}
+.promptbox{background:var(--sage-soft);border:1px solid var(--line);border-radius:15px;padding:18px;font-size:13.8px;
+  white-space:pre-wrap;line-height:1.6;max-height:420px;overflow:auto;margin:14px 0 16px}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.btn{border:0;border-radius:13px;padding:13px 20px;font-size:14.5px;font-weight:700;display:inline-flex;align-items:center;gap:9px;text-decoration:none}
+.btn.primary{background:var(--deep);color:#fff}
+.btn.primary:hover{background:var(--deep-2)}
+.btn.lime{background:var(--lime);color:var(--lime-ink)}
+.btn.ghost{background:var(--sage);color:var(--deep)}
+html[data-theme="dark"] .btn.ghost{color:#CFE6C6}
+.pastewrap{margin-top:22px;border-top:1px solid var(--line);padding-top:20px}
+.pastewrap h4{font-size:15.5px;font-weight:700;margin-bottom:4px}
+.pastewrap .hint{font-size:13.5px;color:var(--muted);margin-bottom:12px}
+.pastewrap textarea{min-height:150px;resize:vertical;margin-bottom:12px}
+.result{border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-top:12px;background:var(--card)}
+.result .rhead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.result .rhead time{font-size:12.5px;color:var(--muted);font-weight:600}
+.result .rhead .del,.result .rhead .cpy{margin-left:auto;border:0;background:none;font-size:12.5px;font-weight:700;color:var(--muted)}
+.result .rhead .cpy{margin-left:auto}
+.result .rhead .del{margin-left:12px;color:var(--danger)}
+.result pre{white-space:pre-wrap;font-family:inherit;font-size:13.5px;line-height:1.55;max-height:260px;overflow:auto}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--deep);color:#fff;
+  padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:all .25s;z-index:50;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+footer{border-top:1px solid var(--line);margin-top:16px;padding:22px 0 34px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+footer .fb{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+footer .fb .bn{font-weight:800;letter-spacing:.12em;color:var(--ink);font-size:12.5px}
+footer .sep{width:1px;height:16px;background:var(--line)}
+
+.view{display:none}
+.view.on{display:block}
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr}
+  .grid3{grid-template-columns:1fr 1fr}
+}
+@media (max-width:620px){
+  .grid3,.grid2,.wfgrid{grid-template-columns:1fr}
+  .cta{flex-direction:column;align-items:flex-start}
+  .cta .go{margin-left:0}
+  .chead .right{margin-left:0}
+  .chead{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"><span>AI ENTERPRISE STUDIO</span><span class="dash"></span></div>
+    <div class="theme">
+      <span class="sun" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+      <div class="seg" role="group" aria-label="Theme">
+        <button id="thLight" class="on" onclick="setTheme('light')">Light</button>
+        <button id="thDark" onclick="setTheme('dark')">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ STEP 1 ============ -->
+  <section id="view1" class="view on">
+    <div class="hero">
+      <div class="blob a"></div><div class="blob b"></div>
+      <div>
+        <span class="eyebrow">Agency Business Builder &amp; Operations System</span>
+        <h1 class="title">AI Advantage</h1>
+        <p class="lede">Build and operate a consulting business that shows local companies where AI genuinely helps — mapping their processes, installing reusable prompt systems and SOPs, training their teams, controlling risk and proving the improvement with clear reporting.</p>
+        <div class="feats">
+          <div class="feat"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg></span><span class="tx">Practical AI Opportunities</span></div>
+          <div class="feat"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="4" height="8" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="16" y="10" width="4" height="10" rx="1"/></svg></span><span class="tx">More Efficient Workflows</span></div>
+          <div class="feat"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 20c.6-3.2 3.2-5 6.2-5s5.6 1.8 6.2 5"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M15.5 14.6c2.9-.3 5.2 1.3 5.7 4.4"/></svg></span><span class="tx">Real Business Improvement</span></div>
+        </div>
+      </div>
+      <div class="gen">
+        <div class="ghead">
+          <span class="chip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="10" y="10" width="4" height="4"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></span>
+          <h3>GENERATE 31 CUSTOM AGENCY WORKFLOWS</h3>
+        </div>
+        <p>Choose the AI you work with, set up your agency profile and add client context — the system builds customized workflows for setup, sales, audits, processes, prompts, governance, training, reporting and growth.</p>
+        <div class="rule"></div>
+        <div class="big"><b>31</b><span>GUIDED WORKFLOWS</span></div>
+      </div>
+      <div class="deco"></div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h6"/></svg></span>
+        <div>
+          <h2>Customize Your Agency</h2>
+          <div class="sub">Build the agency and create safer, clearer and more practical AI-assisted workflows for client businesses.</div>
+        </div>
+        <div class="right"></div>
+      </div>
+
+      <div class="sect">
+        <h4>AI platform</h4>
+        <div class="hint">The copy-and-open action on every workflow will match this choice.</div>
+        <div class="field mini">
+          <label for="fPlatform">Which AI will you use?</label>
+          <select id="fPlatform" onchange="bind('platform',this.value)">
+            <option>ChatGPT</option><option>Claude</option><option>Gemini</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h4>Agency profile</h4>
+        <div class="hint">Define the business you want to build and the service menu you want to sell.</div>
+        <div class="grid3">
+          <div class="field"><label for="fName">Agency name or working name</label><input id="fName" placeholder="Example: Practical AI Works" oninput="bindP('name',this.value)"></div>
+          <div class="field" id="wCountry"><label for="fCountry">Country or operating market <span class="req">*</span></label><input id="fCountry" placeholder="Example: United States" oninput="bindP('country',this.value)"></div>
+          <div class="field" id="wNiche"><label for="fNiche">Target local-business niche <span class="req">*</span></label><input id="fNiche" placeholder="Example: professional service businesses" oninput="bindP('niche',this.value)"></div>
+          <div class="field"><label for="fArea">Geographic service area</label><input id="fArea" placeholder="Example: Denver and surrounding counties" oninput="bindP('area',this.value)"></div>
+          <div class="field"><label for="fExp">Experience level <span class="req">*</span></label>
+            <select id="fExp" onchange="bindP('exp',this.value)">
+              <option>Beginner building a first agency</option>
+              <option>Some freelance or agency experience</option>
+              <option>Established agency adding AI services</option>
+            </select></div>
+          <div class="field"><label for="fModel">Preferred delivery model <span class="req">*</span></label>
+            <select id="fModel" onchange="bindP('model',this.value)">
+              <option>Audit plus implementation</option>
+              <option>Audit and recommendations only</option>
+              <option>Ongoing enablement retainer</option>
+              <option>Project-based implementation</option>
+            </select></div>
+          <div class="field"><label for="fTime">Weekly time available</label>
+            <select id="fTime" onchange="bindP('time',this.value)">
+              <option>5 hours or less</option><option>5 to 10 hours</option>
+              <option>10 to 20 hours</option><option>20+ hours</option>
+            </select></div>
+          <div class="field"><label for="fIncome">Monthly income or client target</label><input id="fIncome" placeholder="Example: 6 clients or $10,000/month" oninput="bindP('income',this.value)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <span class="ic sage"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></span>
+        <div>
+          <h2>Services Included in Your Agency Offer</h2>
+          <div class="sub">Select the services you will offer to clients. These will be used to generate your workflow menu.</div>
+        </div>
+        <div class="right">
+          <span class="countpill" id="svcCount">0 SELECTED</span>
+          <button class="linkbtn" onclick="allSvc(true)">Select all</button>
+          <button class="linkbtn" onclick="allSvc(false)">Clear</button>
+        </div>
+      </div>
+      <div class="sect"><div class="grid2" id="svcGrid"></div></div>
+    </div>
+
+    <div class="cta" id="ctaBand">
+      <span class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span>
+      <div>
+        <h3>Your AI Advantage Agency workspace is ready.</h3>
+        <p>Complete your setup, select your services and use the guided workflows below — all in one workspace.</p>
+        <p class="warn" id="ctaWarn">Fill the required fields marked * and select at least one service to continue.</p>
+      </div>
+      <button class="go" onclick="startWorkflows()">Go to Workflows <span aria-hidden="true">&#8595;</span></button>
+    </div>
+  </section>
+
+  <!-- ============ STEP 2 ============ -->
+  <section id="view2" class="view">
+    <div class="backrow">
+      <button class="backbtn" onclick="goStep(1)"><span aria-hidden="true">&#8592;</span> Back to setup</button>
+      
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <span class="ic sage"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="4.2"/></svg></span>
+        <div>
+          <h2>Client Context <span style="font-weight:500;font-size:14px;color:var(--muted)">(optional)</span></h2>
+          <div class="sub">Add the client you are working with — every fulfillment workflow will be customized to them. Leave blank to keep outputs reusable.</div>
+        </div>
+      </div>
+      <div class="sect">
+        <div class="grid3">
+          <div class="field"><label for="cName">Client business name</label><input id="cName" placeholder="Example: Summit Dental Care" oninput="bindC('name',this.value)"></div>
+          <div class="field"><label for="cInd">Client industry</label><input id="cInd" placeholder="Example: dental clinic" oninput="bindC('industry',this.value)"></div>
+          <div class="field"><label for="cLoc">Client location</label><input id="cLoc" placeholder="Example: Aurora, CO" oninput="bindC('location',this.value)"></div>
+        </div>
+        <div class="field" style="margin-top:16px"><label for="cNotes">Notes or goals</label><input id="cNotes" placeholder="Example: 12-person team, wants faster enquiry handling and staff training" oninput="bindC('notes',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <span class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></span>
+        <div>
+          <h2>Your Workflow Menu</h2>
+          <div class="sub" id="menuCount"></div>
+        </div>
+      </div>
+      <div id="wfMenu"></div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 3 ============ -->
+  <section id="view3" class="view">
+    <div class="backrow">
+      <button class="backbtn" onclick="goStep(2)"><span aria-hidden="true">&#8592;</span> Back to workflow menu</button>
+      
+    </div>
+
+    <div class="card">
+      <span class="catchip" id="rCat"></span>
+      <h2 id="rTitle" style="font-size:24px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px"></h2>
+      <p id="rDesc" style="font-size:14.5px;color:var(--muted)"></p>
+
+      <div class="sect" style="border:0">
+        <h4>Your customized prompt</h4>
+        <div class="hint">Built from your agency profile and client context after you enter those details. Copy it into your AI, then paste the response back below to save it.</div>
+        <div class="promptbox" id="rPrompt"></div>
+        <div class="btnrow">
+          <button class="btn primary" id="rCopy" onclick="copyPrompt()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg> Copy Prompt</button>
+          <a class="btn ghost" id="rOpen" target="_blank" rel="noopener">Open ChatGPT <span aria-hidden="true">&#8599;</span></a>
+        </div>
+      </div>
+
+      <div class="pastewrap">
+        <h4>Paste the AI response</h4>
+        <div class="hint">Saved results stay in this browser — nothing leaves your computer.</div>
+        <textarea id="rPaste" placeholder="Paste the response from your AI here..."></textarea>
+        <button class="btn lime" onclick="saveResult()">Save Result</button>
+        <div id="rResults"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="fb"><span class="bn">AI ENTERPRISE STUDIO</span><span class="sep"></span><span>Agency Business Builder &amp; Operations System</span></div>
+    <div class="fb"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg><span>Own the system. Deliver with judgment.</span></div>
+  </footer>
+
+</div>
+<div class="toast" id="toast">Copied</div>
+
+<script>
+"use strict";
+/* ================= DATA ================= */
+var SERVICES = [
+  {k:"s1", label:"AI Readiness and Opportunity Audit"},
+  {k:"s2", label:"Process and Task Mapping"},
+  {k:"s3", label:"AI Use-Case Prioritization and Roadmap"},
+  {k:"s4", label:"Prompt Systems and Workflow SOPs"},
+  {k:"s5", label:"Marketing and Content Workflow Enablement"},
+  {k:"s6", label:"Customer Communication Workflow Enablement"},
+  {k:"s7", label:"Administration and Operations Workflow Enablement"},
+  {k:"s8", label:"Knowledge Base and Staff Enablement"},
+  {k:"s9", label:"AI Governance, Risk and Quality Controls"},
+  {k:"s10", label:"AI Reporting and Optimization"}
+];
+var CATS = {setup:"Agency Building"};
+SERVICES.forEach(function(s){ CATS[s.k] = s.label; });
+
+var WORKFLOWS = [
+ {id:"w1", cat:"setup", title:"Agency Positioning & Offer", desc:"Define your niche positioning, core promise and differentiators.",
+  task:"Create a positioning package for this agency: a one-sentence positioning statement, a three-part core promise, five differentiators against generic marketing agencies, and a short elevator pitch tuned to the target niche and market.",
+  out:"Clear headed sections. Keep language plain and confident, no hype."},
+ {id:"w2", cat:"setup", title:"Service Packages & Pricing", desc:"Turn your selected services into three sellable packages.",
+  task:"Using the selected services listed in the context, design three tiered packages (an entry audit, an implementation package, and an ongoing enablement option) that fit the stated delivery model. For each: name, scope, deliverables, timeline, a realistic price range for the stated market, and the natural upsell path between them.",
+  out:"One section per package plus a short pricing rationale."},
+ {id:"w3", cat:"setup", title:"Prospecting & Outreach Campaign", desc:"A 14-day outreach plan for your niche and area.",
+  task:"Build a 14-day prospecting campaign for the target niche in the service area: ideal prospect criteria, where to find them, three short cold email scripts, two phone call openers, one LinkedIn message, and a follow-up cadence. Match the weekly time available.",
+  out:"Day-by-day plan followed by the scripts, each clearly labeled."},
+ {id:"w4", cat:"setup", title:"Discovery Call Framework", desc:"Agenda, qualifying questions and next-step script.",
+  task:"Create a discovery call framework: a 30-minute agenda, fifteen qualifying questions grouped by theme (situation, pain, tools, team, budget/authority), five red flags that signal a poor-fit client, a simple note-taking template, and a closing script that books the next step.",
+  out:"Headed sections; questions as a numbered list."},
+ {id:"w5", cat:"setup", title:"Proposal Generator", desc:"A client-ready proposal from your discovery notes.",
+  task:"Draft a client-ready proposal for the client in context: situation summary, recommended package and why, scope and deliverables, timeline, investment, what is not included, simple terms, and next steps. Keep it under two pages and free of jargon.",
+  out:"Proposal format with short headed sections, ready to lightly edit and send."},
+ {id:"w6", cat:"setup", title:"Client Onboarding Plan", desc:"Checklist, kickoff agenda and first-30-days plan.",
+  task:"Produce an onboarding pack for a new client: pre-kickoff checklist (access, contacts, documents), a kickoff meeting agenda, a communication cadence recommendation, and a first-30-days plan with weekly milestones matched to the delivery model.",
+  out:"Checklist plus a week-by-week table in text form."},
+
+ {id:"w7", cat:"s1", title:"Readiness Questionnaire", desc:"The intake questionnaire that starts every audit.",
+  task:"Create an AI readiness questionnaire of 25 to 30 questions for the client business, grouped into: operations, marketing, customer communication, administration, data and tools, and staff skills and attitudes. Mix multiple-choice and short-answer. Keep every question answerable by a busy owner.",
+  out:"Grouped, numbered questions with answer format noted per question."},
+ {id:"w8", cat:"s1", title:"Opportunity Audit Report", desc:"Turn findings into the flagship audit deliverable.",
+  task:"Using the questionnaire findings I will provide (or reasonable assumptions for this industry if none are given), write an AI opportunity audit report: current-state summary, the top 8 to 10 AI opportunities each scored for impact and effort, three quick wins for the first 30 days, key risks and constraints, and a one-paragraph recommended direction.",
+  out:"Professional report structure with an executive summary first."},
+ {id:"w9", cat:"s1", title:"Findings Presentation", desc:"A 10-slide outline to present the audit.",
+  task:"Create a 10-slide presentation outline for presenting the audit results to the client owner: slide titles, 3 to 4 bullet points per slide, and one suggested talking point per slide. End with the recommended package and next step.",
+  out:"Slide-by-slide outline."},
+
+ {id:"w10", cat:"s2", title:"Process Inventory", desc:"Interview guide plus an inventory of recurring processes.",
+  task:"Create a process-mapping interview guide (12 questions) and a process inventory table structure for the client business: process name, owner, frequency, time taken, tools used, pain level. Then pre-fill the table with 10 processes typical for this industry as a starting point to confirm.",
+  out:"Interview guide then the inventory table in text form."},
+ {id:"w11", cat:"s2", title:"Task Analysis & AI-Fit Scoring", desc:"Break processes into tasks and score AI suitability.",
+  task:"Take the processes I list (or the typical ones for this industry) and break each into individual tasks. Score each task 1 to 5 for AI suitability, with one line of rationale, and flag tasks that must stay fully human (judgment, liability, personal relationships).",
+  out:"Per-process task lists with scores and rationale."},
+ {id:"w12", cat:"s2", title:"Process Map Documentation", desc:"Document priority processes step by step.",
+  task:"Document the three priority processes I name as clear step-by-step maps: trigger, steps in order, owner per step, tools used, handoffs, the points where AI assists, and the points where a human reviews. Write them so a new staff member could follow them.",
+  out:"One headed map per process."},
+
+ {id:"w13", cat:"s3", title:"Use-Case Longlist", desc:"20 candidate AI use-cases for this business.",
+  task:"Generate a longlist of 20 candidate AI use-cases tailored to the client's industry and context — spread across operations, marketing, customer communication, admin and knowledge. For each: one-line description and the main benefit.",
+  out:"Numbered list grouped by area."},
+ {id:"w14", cat:"s3", title:"Prioritization Matrix", desc:"Score the longlist and pick the top five.",
+  task:"Score the use-cases I provide (or your longlist for this industry) on impact, effort and risk (high/medium/low each). Select the top five, justify each selection in two sentences, and note any dependency between them.",
+  out:"Scoring table in text form, then the top-five section."},
+ {id:"w15", cat:"s3", title:"90-Day Implementation Roadmap", desc:"A phased roadmap with milestones and metrics.",
+  task:"Build a 90-day implementation roadmap for the top use-cases: three monthly phases with goals, actions, owner (client staff vs agency), and one success metric per phase. Match the stated delivery model and keep the workload realistic for a small business.",
+  out:"Phase-by-phase plan with a closing metrics summary."},
+
+ {id:"w16", cat:"s4", title:"Prompt Library Builder", desc:"Reusable prompt templates for the client's priority tasks.",
+  task:"Create 10 reusable prompt templates for this client's priority tasks (use the industry's typical tasks if none are given). Each template: name, when to use it, the prompt with [PLACEHOLDERS] for variable details, and one usage note about reviewing the output.",
+  out:"One block per template, clearly separated."},
+ {id:"w17", cat:"s4", title:"Workflow SOP Writer", desc:"A standard operating procedure for one AI-assisted workflow.",
+  task:"Write a standard operating procedure for the AI-assisted workflow I name: purpose, when it runs, step-by-step instructions including which prompt template is used at which step, the human review points, the quality bar for acceptable output, and where finished work is stored.",
+  out:"Numbered SOP a new staff member could follow unaided."},
+ {id:"w18", cat:"s4", title:"Prompt QA Checklist", desc:"The review checklist before any AI output reaches a customer.",
+  task:"Create a quality-assurance checklist for reviewing AI-generated content before it is used or sent by this business: accuracy checks, tone and brand fit, personal-data check, claims that need verification, formatting, and a final sign-off line. Keep it to one page.",
+  out:"A single practical checklist with brief explanations."},
+
+ {id:"w19", cat:"s5", title:"Content Workflow Design", desc:"A monthly content workflow with AI-assist points.",
+  task:"Design a monthly marketing content workflow for this client: plan, draft, review, publish and repurpose stages; who does each; where AI assists and where a human decides; a simple monthly calendar rhythm; and the approval rule before anything is published.",
+  out:"Stage-by-stage workflow plus the monthly rhythm."},
+ {id:"w20", cat:"s5", title:"Marketing Prompt Pack", desc:"12 marketing prompts tuned to this business.",
+  task:"Create 12 marketing prompts tuned to this business and location: local social posts, a monthly offer announcement, a customer email, a re-engagement email, a simple ad draft, and seasonal variations. Each with [PLACEHOLDERS] and a one-line usage note.",
+  out:"One block per prompt, grouped by channel."},
+
+ {id:"w21", cat:"s6", title:"Enquiry Response System", desc:"Standards and an AI-drafting workflow for enquiries.",
+  task:"Design an enquiry response system for this client: response-time standards per channel, triage rules (urgent, sales, support, spam), an AI-assisted drafting workflow with mandatory human review, and escalation rules for complaints or sensitive matters.",
+  out:"Standards first, then the workflow, then escalation rules."},
+ {id:"w22", cat:"s6", title:"Communication Templates Pack", desc:"10 customer communication templates.",
+  task:"Write 10 customer communication templates for this business: new enquiry reply, quote/estimate email, booking confirmation, gentle follow-up, review request, response to a positive review, response to a negative review, delay notice, price-increase notice, and a win-back message. Match a friendly professional tone for the industry.",
+  out:"One labeled template per message with [PLACEHOLDERS]."},
+
+ {id:"w23", cat:"s7", title:"Admin Automation Plan", desc:"Where AI saves the most admin time.",
+  task:"Identify the top 8 administrative tasks for this business type and design an AI-assist approach for each: what the task is, how AI helps, the tool category needed, estimated time before vs after, and the human check that remains.",
+  out:"One short block per task with the time estimate."},
+ {id:"w24", cat:"s7", title:"Operations Prompt Pack", desc:"10 prompts for everyday internal work.",
+  task:"Create 10 internal operations prompts for this business: meeting notes to action list, weekly summary, staff rota message, supplier email, incident write-up, checklist generator, policy explainer, job-ad draft, training-session outline, and end-of-month operations report. Each with [PLACEHOLDERS].",
+  out:"One block per prompt."},
+
+ {id:"w25", cat:"s8", title:"Knowledge Base Structure", desc:"The client's internal knowledge base, structured.",
+  task:"Design an internal knowledge base structure for this client: main categories, the first 15 article titles ordered by value, and full outlines for the first 5 articles. Focus on what staff actually need to answer customers and run the business consistently.",
+  out:"Category tree, article list, then the five outlines."},
+ {id:"w26", cat:"s8", title:"Staff Training Plan", desc:"Role-based AI training for the client's team.",
+  task:"Create a staff AI-enablement training plan for this client: roles and what each needs to learn, three training sessions with agendas and hands-on exercises, and a simple competency checklist to confirm each person is ready to use AI in their work.",
+  out:"Sessions with agendas, then the checklist."},
+ {id:"w27", cat:"s8", title:"AI Usage Guidelines", desc:"Plain do-and-don't guidelines for staff.",
+  task:"Write plain-language AI usage guidelines for this client's staff: approved uses, prohibited uses, customer and personal data rules, when outputs must be reviewed and by whom, how to report a problem, and three worked examples of good vs risky use.",
+  out:"A one-to-two page guideline document staff will actually read."},
+
+ {id:"w28", cat:"s9", title:"Governance Policy", desc:"A simple AI policy the owner can adopt.",
+  task:"Draft a simple AI governance policy for this business: purpose, approved tools and uses, prohibited uses, data privacy rules, human review requirements, accountability (who owns the policy), and an annual review note. Plain language throughout, suitable for a small company.",
+  out:"Policy document with numbered sections."},
+ {id:"w29", cat:"s9", title:"Risk & Quality Framework", desc:"Top risks and the quality checkpoints that control them.",
+  task:"Create a risk and quality framework for this client's AI use: a register of the top 8 risks (wrong information, data exposure, tone damage, over-reliance, etc.) each with likelihood, impact and mitigation, plus the quality-control checkpoints to add into each AI-assisted workflow.",
+  out:"Risk register then checkpoint list."},
+
+ {id:"w30", cat:"s10", title:"Monthly AI Impact Report", desc:"The recurring report that proves your value.",
+  task:"Create a monthly AI impact report template for this client engagement: activities completed, workflows now running, estimated time saved, quality observations, issues found and fixed, staff adoption notes, and recommended optimizations for next month. Then fill it in as a realistic example month.",
+  out:"The reusable template, then the filled example."},
+ {id:"w31", cat:"s10", title:"Optimization Review", desc:"The quarterly review that grows the engagement.",
+  task:"Design a quarterly optimization review for this engagement: review meeting agenda, twelve questions that surface what is working and what is not, a scoring approach for each active workflow, and a format for the improvement backlog that feeds the next quarter — including natural expansion services to propose.",
+  out:"Agenda, questions, scoring, backlog format."}
+];
+
+var AI_LINKS = {ChatGPT:"https://chatgpt.com/", Claude:"https://claude.ai/new", Gemini:"https://gemini.google.com/app"};
+
+/* ================= STATE ================= */
+var KEY = "aies_ai_advantage_v1";
+var S = {
+  theme:"light", step:1, platform:"ChatGPT",
+  profile:{name:"",country:"",niche:"",area:"",exp:"Beginner building a first agency",model:"Audit plus implementation",time:"5 hours or less",income:""},
+  client:{name:"",industry:"",location:"",notes:""},
+  services:[], results:{}, currentWf:null
+};
+try{
+  var raw = localStorage.getItem(KEY);
+  if(raw){ var loaded = JSON.parse(raw); for(var k in loaded){ S[k]=loaded[k]; } }
+}catch(e){}
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function bind(k,v){ S[k]=v; save(); refreshPromptIfOpen(); }
+function bindP(k,v){ S.profile[k]=v; save(); refreshPromptIfOpen(); }
+function bindC(k,v){ S.client[k]=v; save(); refreshPromptIfOpen(); }
+
+function profileReady(){
+  return !!(S.profile.country && S.profile.country.trim() && S.profile.niche && S.profile.niche.trim());
+}
+function refreshPromptIfOpen(){
+  if(S.step===3){ updatePromptPanel(); }
+}
+
+/* ================= THEME ================= */
+function setTheme(t){
+  S.theme=t; save();
+  document.documentElement.setAttribute("data-theme",t);
+  document.getElementById("thLight").classList.toggle("on",t==="light");
+  document.getElementById("thDark").classList.toggle("on",t==="dark");
+}
+
+/* ================= SERVICES ================= */
+function renderServices(){
+  var g=document.getElementById("svcGrid"); g.innerHTML="";
+  SERVICES.forEach(function(s){
+    var on = S.services.indexOf(s.k)>=0;
+    var d=document.createElement("div");
+    d.className="svc"+(on?" on":"");
+    d.setAttribute("role","checkbox");
+    d.setAttribute("aria-checked",on?"true":"false");
+    d.tabIndex=0;
+    d.innerHTML='<span class="box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>';
+    var t=document.createElement("span"); t.textContent=s.label; d.appendChild(t);
+    function toggle(){
+      var i=S.services.indexOf(s.k);
+      if(i>=0){ S.services.splice(i,1); } else { S.services.push(s.k); }
+      save(); renderServices();
+    }
+    d.onclick=toggle;
+    d.onkeydown=function(ev){ if(ev.key===" "||ev.key==="Enter"){ ev.preventDefault(); toggle(); } };
+    g.appendChild(d);
+  });
+  document.getElementById("svcCount").textContent = S.services.length+" SELECTED";
+}
+function allSvc(on){
+  S.services = on ? SERVICES.map(function(s){return s.k;}) : [];
+  save(); renderServices();
+}
+
+/* ================= STEP NAV ================= */
+function showView(n){
+  ["view1","view2","view3"].forEach(function(id, idx){
+    var el=document.getElementById(id);
+    if(el){ el.classList.toggle("on", idx+1===n); }
+  });
+}
+function goStep(n){
+  S.step=n; save();
+  if(n===2){ renderMenu(); }
+  if(n===3){ renderRunner(); }
+  showView(n);
+  window.scrollTo(0,0);
+  var target=document.getElementById(n===1?"view1":n===2?"view2":"view3");
+  if(target){ target.scrollIntoView({behavior:"smooth",block:"start"}); }
+}
+function startWorkflows(){
+  var missing=false;
+  ["wCountry","wNiche"].forEach(function(id){ document.getElementById(id).classList.remove("err"); });
+  if(!S.profile.country.trim()){ document.getElementById("wCountry").classList.add("err"); missing=true; }
+  if(!S.profile.niche.trim()){ document.getElementById("wNiche").classList.add("err"); missing=true; }
+  if(S.services.length===0){ missing=true; }
+  var band=document.getElementById("ctaBand");
+  if(missing){ band.classList.add("invalid"); return; }
+  band.classList.remove("invalid");
+  goStep(2);
+}
+
+/* ================= STEP 2 MENU ================= */
+function activeWorkflows(){
+  return WORKFLOWS.filter(function(w){ return w.cat==="setup" || S.services.indexOf(w.cat)>=0; });
+}
+function renderMenu(){
+  var wrap=document.getElementById("wfMenu"); wrap.innerHTML="";
+  var act=activeWorkflows();
+  document.getElementById("menuCount").textContent = act.length+" of 31 guided workflows in your menu, based on your selected services.";
+  var order=["setup"].concat(SERVICES.map(function(s){return s.k;}));
+  order.forEach(function(cat){
+    var list=act.filter(function(w){return w.cat===cat;});
+    if(!list.length){ return; }
+    var g=document.createElement("div"); g.className="group";
+    var h=document.createElement("h4"); h.textContent=CATS[cat]; g.appendChild(h);
+    var c=document.createElement("div"); c.className="gcount";
+    c.textContent=list.length+(list.length===1?" workflow":" workflows"); g.appendChild(c);
+    var grid=document.createElement("div"); grid.className="wfgrid";
+    list.forEach(function(w){
+      var idx=WORKFLOWS.indexOf(w)+1;
+      var card=document.createElement("div"); card.className="wf";
+      var savedCount=(S.results[w.id]||[]).length;
+      card.innerHTML='<span class="num">'+(idx<10?"0":"")+idx+'</span>';
+      var b=document.createElement("b"); b.textContent=w.title; card.appendChild(b);
+      var p=document.createElement("p"); p.textContent=w.desc; card.appendChild(p);
+      if(savedCount){
+        var dn=document.createElement("span"); dn.className="done";
+        dn.textContent="\u2713 "+savedCount+" saved result"+(savedCount>1?"s":""); card.appendChild(dn);
+      }
+      var btn=document.createElement("button");
+      btn.type="button";
+      btn.className="open";
+      btn.textContent="Open workflow \u2192";
+      btn.setAttribute("data-wf-id", w.id);
+      btn.addEventListener("click", function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        S.currentWf=w.id;
+        save();
+        goStep(3);
+      });
+      card.appendChild(btn);
+      grid.appendChild(card);
+    });
+    g.appendChild(grid);
+    wrap.appendChild(g);
+  });
+}
+
+/* ================= PROMPT BUILD ================= */
+function line(label,val,fallback){ return label+": "+(val&&val.trim()?val.trim():fallback); }
+function buildPrompt(w){
+  if(!profileReady()){
+    return "Enter your agency profile details first (operating market/country and target niche on the setup page).\n\nAfter those details are saved, this customized prompt will generate automatically with your agency and client context.";
+  }
+  var p=S.profile, c=S.client;
+  var agency = p.name.trim()||"a new local-services consulting agency";
+  var parts=[];
+  parts.push("ROLE\nYou are an experienced AI-enablement consultant working inside "+agency+". You produce practical, professional deliverables for small local businesses. You avoid hype, keep language plain, and flag anything that needs human verification before client use.");
+  parts.push("AGENCY CONTEXT\n"+[
+    line("Operating market", p.country, "not specified"),
+    line("Target niche", p.niche, "local service businesses"),
+    line("Service area", p.area, "not specified"),
+    line("Experience level", p.exp, "beginner"),
+    line("Delivery model", p.model, "audit plus implementation"),
+    line("Weekly time available", p.time, "limited"),
+    line("Income or client target", p.income, "not specified")
+  ].join("\n"));
+  if(c.name.trim()||c.industry.trim()||c.location.trim()||c.notes.trim()){
+    parts.push("CLIENT CONTEXT\n"+[
+      line("Business", c.name, "not named"),
+      line("Industry", c.industry, "not specified"),
+      line("Location", c.location, "not specified"),
+      line("Notes and goals", c.notes, "none provided")
+    ].join("\n"));
+  } else {
+    parts.push("CLIENT CONTEXT\nNo specific client yet - keep the output reusable for a typical business in the target niche.");
+  }
+  if(w.cat==="setup" && S.services.length){
+    var names=S.services.map(function(k){ return CATS[k]; });
+    parts.push("SELECTED SERVICES\n- "+names.join("\n- "));
+  }
+  parts.push("TASK\n"+w.task);
+  parts.push("OUTPUT FORMAT\n"+w.out+" Do not add a preamble or closing note - return only the deliverable.");
+  return parts.join("\n\n");
+}
+
+/* ================= STEP 3 RUNNER ================= */
+function currentWorkflow(){
+  for(var i=0;i<WORKFLOWS.length;i++){ if(WORKFLOWS[i].id===S.currentWf){ return WORKFLOWS[i]; } }
+  return WORKFLOWS[0];
+}
+function updatePromptPanel(){
+  var w=currentWorkflow();
+  var box=document.getElementById("rPrompt");
+  var copyBtn=document.getElementById("rCopy");
+  var open=document.getElementById("rOpen");
+  var ready=profileReady();
+  box.textContent=buildPrompt(w);
+  if(copyBtn){ copyBtn.disabled=!ready; copyBtn.style.opacity=ready?"1":".55"; }
+  if(AI_LINKS[S.platform] && ready){
+    open.style.display="inline-flex";
+    open.href=AI_LINKS[S.platform];
+    open.innerHTML="Open "+S.platform+' <span aria-hidden="true">&#8599;</span>';
+  } else {
+    open.style.display="none";
+  }
+}
+function renderRunner(){
+  var w=currentWorkflow();
+  document.getElementById("rCat").textContent=CATS[w.cat];
+  document.getElementById("rTitle").textContent=w.title;
+  document.getElementById("rDesc").textContent=w.desc;
+  updatePromptPanel();
+  document.getElementById("rPaste").value="";
+  renderResults(w);
+}
+function renderResults(w){
+  var box=document.getElementById("rResults"); box.innerHTML="";
+  var list=S.results[w.id]||[];
+  for(var i=list.length-1;i>=0;i--){
+    (function(idx){
+      var r=list[idx];
+      var d=document.createElement("div"); d.className="result";
+      var head=document.createElement("div"); head.className="rhead";
+      var tm=document.createElement("time"); tm.textContent="Saved "+r.ts; head.appendChild(tm);
+      var cp=document.createElement("button"); cp.className="cpy"; cp.textContent="Copy";
+      cp.onclick=function(){ doCopy(r.text,"Result copied"); }; head.appendChild(cp);
+      var del=document.createElement("button"); del.className="del"; del.textContent="Delete";
+      del.onclick=function(){ list.splice(idx,1); S.results[w.id]=list; save(); renderResults(w); renderMenuSafe(); };
+      head.appendChild(del);
+      d.appendChild(head);
+      var pre=document.createElement("pre"); pre.textContent=r.text; d.appendChild(pre);
+      box.appendChild(d);
+    })(i);
+  }
+}
+function renderMenuSafe(){ renderMenu(); }
+function saveResult(){
+  var t=document.getElementById("rPaste").value.trim();
+  if(!t){ toast("Paste a response first"); return; }
+  var w=currentWorkflow();
+  if(!S.results[w.id]){ S.results[w.id]=[]; }
+  var now=new Date();
+  S.results[w.id].push({ts: now.toLocaleDateString()+" "+now.toLocaleTimeString(), text:t});
+  document.getElementById("rPaste").value="";
+  save(); renderResults(w); toast("Result saved");
+}
+function copyPrompt(){
+  if(!profileReady()){ toast("Enter agency profile details first"); return; }
+  doCopy(buildPrompt(currentWorkflow()),"Prompt copied");
+}
+function doCopy(text,msg){
+  function fallback(){
+    var ta=document.createElement("textarea");
+    ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); toast(msg); }catch(e){ toast("Copy failed - select the text manually"); }
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast(msg); }, fallback);
+  } else { fallback(); }
+}
+var toastTimer=null;
+function toast(msg){
+  var t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  if(toastTimer){ clearTimeout(toastTimer); }
+  toastTimer=setTimeout(function(){ t.classList.remove("show"); },1800);
+}
+
+/* ================= INIT ================= */
+(function init(){
+  setTheme(S.theme==="dark"?"dark":"light");
+  document.getElementById("fPlatform").value=S.platform;
+  document.getElementById("fName").value=S.profile.name;
+  document.getElementById("fCountry").value=S.profile.country;
+  document.getElementById("fNiche").value=S.profile.niche;
+  document.getElementById("fArea").value=S.profile.area;
+  document.getElementById("fExp").value=S.profile.exp;
+  document.getElementById("fModel").value=S.profile.model;
+  document.getElementById("fTime").value=S.profile.time;
+  document.getElementById("fIncome").value=S.profile.income;
+  document.getElementById("cName").value=S.client.name;
+  document.getElementById("cInd").value=S.client.industry;
+  document.getElementById("cLoc").value=S.client.location;
+  document.getElementById("cNotes").value=S.client.notes;
+  renderServices();
+  if(!S.currentWf && WORKFLOWS[0]){ S.currentWf=WORKFLOWS[0].id; save(); }
+  var step = S.step===2 || S.step===3 ? S.step : 1;
+  if(step===2){ renderMenu(); }
+  if(step===3){ renderMenu(); renderRunner(); }
+  showView(step);
+})();
+</script>
+</body>
+</html>

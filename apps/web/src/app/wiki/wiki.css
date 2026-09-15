@@ -1,0 +1,226 @@
+.wiki-home,
+.wiki-article-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.wiki-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem;
+}
+
+.wiki-search input,
+.wiki-ask-form input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--bg-panel, var(--surface));
+  color: var(--text);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+}
+
+.wiki-ask h3,
+.wiki-nav h3,
+.wiki-nav h4,
+.wiki-article-body h2,
+.wiki-related-grid h3 {
+  margin: 0 0 0.45rem;
+}
+
+.wiki-ask-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+}
+
+.wiki-ask-results ul,
+.wiki-side-list ul,
+.wiki-related-grid ul,
+.wiki-article-body ul,
+.wiki-article-body ol {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.wiki-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.wiki-nav {
+  display: grid;
+  gap: 0.35rem;
+  position: sticky;
+  top: 0.75rem;
+}
+
+.wiki-nav-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+}
+
+.wiki-nav-item.active,
+.wiki-nav-item:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.wiki-progress-box,
+.wiki-side-list {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.wiki-article-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.85rem;
+}
+
+.wiki-article-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel, var(--surface));
+  text-decoration: none;
+  color: inherit;
+  min-height: 160px;
+}
+
+.wiki-article-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.wiki-article-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.wiki-article-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.wiki-cat-pill {
+  display: inline-flex;
+  width: fit-content;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.wiki-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.wiki-keywords span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+}
+
+.wiki-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.wiki-breadcrumb a {
+  color: inherit;
+}
+
+.wiki-article-head h1 {
+  margin: 0.45rem 0 0.35rem;
+  font-size: clamp(1.55rem, 2.6vw, 2.1rem);
+  line-height: 1.15;
+}
+
+.wiki-summary {
+  margin: 0 0 0.9rem;
+  color: var(--text-muted);
+  max-width: 70ch;
+}
+
+.wiki-article-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.wiki-article-body {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.wiki-section p {
+  margin: 0;
+  line-height: 1.55;
+  max-width: 72ch;
+}
+
+.wiki-human-review {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+}
+
+.wiki-checklist li {
+  margin-bottom: 0.25rem;
+}
+
+.wiki-related-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.wiki-related-grid a {
+  font-weight: 600;
+}
+
+@media (max-width: 980px) {
+  .wiki-layout,
+  .wiki-related-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-nav {
+    position: static;
+  }
+
+  .wiki-search,
+  .wiki-ask-form {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,3 @@
+-- Phase 5 purchases (applied via prisma db push; kept for documentation)
+-- Tables: purchases, purchase_items
+-- Enums: PurchaseStatus, PurchaseType, PurchaseItemType

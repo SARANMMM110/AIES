@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Advantage Agency — AI Enterprise Studio</title>
+<style>
+:root{
+ --green:#caff45;--green2:#8edc69;--dark:#07110f;--dark3:#0d1b17;
+ --ink:#101a1c;--muted:#687572;--line:#dce5e1;--blue:#3d7cff;
+ --orange:#ff984e;--pink:#f16fb5;--purple:#8e70e8;--cyan:#5ccbd0;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}.container{width:min(1180px,calc(100% - 58px));margin:auto}
+.nav{height:62px;background:rgba(7,17,15,.96);border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:99}
+.nav-in{height:62px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:8px;color:#fff;font-size:15px;font-weight:900}
+.brand-mark{color:var(--green);font-size:18px;font-weight:1000;line-height:1}
+.links{display:flex;gap:31px;color:#c8d0cc;font-size:14px;font-weight:700}
+.links a:hover{color:var(--green)}
+.nav-side{display:flex;align-items:center;gap:20px}.signin{font-size:14px;color:#c8d0cc}
+.nav-btn,.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;font-size:14px;font-weight:900}
+.nav-btn{padding:8px 14px;background:var(--green);color:#14200c}
+.btn{padding:10px 16px}.lime{background:var(--green);color:#15200d;box-shadow:0 8px 22px #caff4530}.outline{border:1px solid rgba(255,255,255,.3);color:#fff}.white{background:#fff;color:#17201e;border:1px solid #dce4e0}.blue{background:var(--blue);color:#fff;box-shadow:0 8px 20px #3d7cff30}
+
+/* HERO */
+.hero{color:#fff;background:
+ radial-gradient(circle at 71% 10%,rgba(109,176,123,.31),transparent 25%),
+ radial-gradient(circle at 92% 65%,rgba(47,111,83,.18),transparent 28%),
+ linear-gradient(118deg,#06100e,#0b1714 60%,#0a1512);
+ position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;inset:0;opacity:.45;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(#000,transparent 90%)}
+.hero-in{min-height:505px;display:grid;grid-template-columns:.86fr 1.14fr;align-items:center;gap:28px;position:relative;z-index:1}
+.hero-copy{padding:55px 0 48px}.eyebrow{display:flex;gap:8px;align-items:center;color:#c2cbc6;font-size:14px;font-weight:900;letter-spacing:.15em;text-transform:uppercase}.eyebrow:before{content:"";width:15px;height:1px;background:#9aa7a0}
+.hero h1{font-size:clamp(48px,5.6vw,68px);line-height:.93;letter-spacing:-.068em;margin:16px 0 18px}.hero h1 span{color:var(--green)}
+.hero p{font-size:16px;line-height:1.65;color:#aab5af;max-width:430px}.hero-actions{display:flex;gap:9px;margin-top:21px}
+.proofs{display:flex;gap:22px;margin-top:24px}.proof{display:flex;align-items:center;gap:6px;color:#cbd2ce;font-size:13px;font-weight:750}.proof-icon{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;color:var(--green);background:#1d3025;border:1px solid #34503c}
+
+/* hero UI */
+.hero-ui{height:430px;position:relative;display:flex;align-items:center;justify-content:center}
+.os{position:relative;width:480px;height:315px;border:1px solid #31453d;border-radius:17px;background:linear-gradient(140deg,#172621,#0b1512);box-shadow:0 35px 90px #0009;transform:rotate(-3deg);padding:17px}
+.os-rail{position:absolute;left:0;top:0;bottom:0;width:51px;border-right:1px solid #293a33;display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:26px;color:#809089}.os-rail b{color:var(--green);font-size:17px}.os-main{margin-left:57px}.os-head{display:flex;justify-content:space-between}.os-head h3{margin:0;font-size:14px}.os-head p{margin:3px 0 0;font-size:12px;color:#84938b}.pill{font-size:12px;padding:5px 7px;border:1px solid #45623a;border-radius:999px;color:var(--green);background:#18281c}
+.os-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}.os-card{min-height:84px;padding:11px;border:1px solid #25372f;background:#101d19;border-radius:8px}.os-icon{width:23px;height:23px;border-radius:6px;display:grid;place-items:center;background:#142744;color:#5a94ff;font-size:15px;margin-bottom:10px}.os-card:nth-child(2) .os-icon{background:#163025;color:#62e2a1}.os-card:nth-child(3) .os-icon{background:#2a2117;color:#ffa45e}.os-card:nth-child(4) .os-icon{background:#25233a;color:#9b8df1}.os-card b{font-size:14px;display:block}.os-card small{font-size:12px;color:#75847d}.os-bottom{margin-top:7px;border:1px solid #293b33;border-radius:8px;background:#101d19;padding:8px 10px;display:flex;justify-content:space-between}.os-bottom small{font-size:12px;color:#87958e}.os-bottom strong{font-size:14px;color:var(--green)}
+.float{position:absolute;background:#15231e;border:1px solid #3a4b43;border-radius:10px;box-shadow:0 20px 45px #0008;padding:11px}.impact{right:4px;top:40px;width:116px}.impact b{font-size:13px}.impact small{display:block;color:#819089;font-size:12px}.impact strong{display:block;color:#5be19a;font-size:18px;margin-top:3px}.bars{height:27px;display:flex;align-items:end;gap:3px;margin-top:3px}.bars i{display:block;width:7px;background:#55d997;border-radius:2px 2px 0 0}.bars i:nth-child(1){height:5px}.bars i:nth-child(2){height:8px}.bars i:nth-child(3){height:11px}.bars i:nth-child(4){height:15px}.bars i:nth-child(5){height:20px}.bars i:nth-child(6){height:25px}
+.actions-card{right:-1px;bottom:31px;width:105px}.actions-card div{font-size:13px;padding:4px 0;border-bottom:1px solid #2a3933}.actions-card div:last-child{border:0}.actions-card i{font-style:normal;color:var(--green);margin-right:4px}.hand{position:absolute;right:-5px;top:9px;color:#e1e8e3;font:14px cursive;transform:rotate(5deg)}
+
+/* COMMON */
+.section{padding:59px 0}.head{display:grid;grid-template-columns:1fr .82fr;gap:50px;align-items:end;margin-bottom:26px}.tag{font-size:13px;letter-spacing:.15em;text-transform:uppercase;font-weight:900;display:flex;align-items:center;gap:8px;color:#5f6c68}.tag:before{content:"";width:15px;height:1px;background:#697670}.head h2{font-size:clamp(37px,4.3vw,51px);line-height:.94;letter-spacing:-.062em;margin:9px 0 0}.head p{font-size:15px;line-height:1.65;color:#687571;margin:0}
+
+/* CHALLENGE */
+.challenge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.challenge-card{border:1px solid #dce5e1;border-radius:10px;padding:16px;min-height:129px;background:#fff}.ci{width:27px;height:27px;border-radius:7px;display:grid;place-items:center;margin-bottom:17px;background:#fff0e2;color:#ff8d48;font-size:15px}.challenge-card:nth-child(2) .ci{background:#ffedf6;color:#ed609b}.challenge-card:nth-child(3) .ci{background:#eaf1ff;color:#4d83ed}.challenge-card:nth-child(4) .ci{background:#eeeaff;color:#8666dd}.challenge-card h3{font-size:15px;margin:0 0 4px}.challenge-card p{font-size:13px;color:#78837f;margin:0;line-height:1.45}
+
+/* SOLUTION */
+.solution{background:linear-gradient(120deg,#07110f,#0b1814);color:#fff}.solution .tag{color:#c0cbc4}.solution .tag:before{background:#98a69f}.solution .head p{color:#9eaaa4}.solution .head h2{color:#fff}.solution-top{display:flex;align-items:end;justify-content:space-between;gap:25px;margin-bottom:22px}.solution-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.sol-card{position:relative;background:linear-gradient(145deg,#14221e,#101b17);border:1px solid #24362e;border-radius:9px;padding:14px;min-height:132px}.sol-card:not(:last-child):after{content:"→";position:absolute;right:-13px;top:49%;color:#9fc45b;font-size:15px;z-index:3}.sol-icon{width:27px;height:27px;border-radius:7px;background:#233b28;color:var(--green);display:grid;place-items:center;font-size:15px;margin-bottom:14px}.sol-card small{font-size:13px}.sol-card h3{font-size:17px;margin:2px 0 3px}.sol-card p{font-size:13px;color:#819088;margin:0;line-height:1.4}
+
+/* SERVICES */
+.service-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.service{border:1px solid #dce5e1;border-radius:9px;padding:12px;min-height:110px;background:#fff}.si{width:25px;height:25px;border-radius:6px;display:grid;place-items:center;background:#e8fae8;color:#45a75e;font-size:15px;margin-bottom:14px}.service:nth-child(2) .si{background:#fff0dc;color:#ec8841}.service:nth-child(3) .si{background:#e7f0ff;color:#4b83eb}.service:nth-child(4) .si{background:#e8fae8;color:#43a45a}.service:nth-child(5) .si{background:#fae8f7;color:#bd5ab0}.service:nth-child(6) .si{background:#fff0df;color:#e9853e}.service:nth-child(7) .si{background:#e4f7fa;color:#3e99aa}.service:nth-child(8) .si{background:#eeebff;color:#7861d8}.service:nth-child(9) .si{background:#e8efff;color:#4b7de4}.service:nth-child(10) .si{background:#ffe9f1;color:#d65c89}.service b{font-size:15px;line-height:1.35;display:block;color:#101a1c}
+
+/* WORKFLOW */
+.workflow{background:linear-gradient(115deg,#07110f,#0d1b16);color:#fff}.workflow-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:48px;align-items:center}.workflow .head{display:block;margin:0}.workflow .tag{color:#bfc9c3}.workflow .tag:before{background:#91a098}.workflow h2{font-size:clamp(38px,4.4vw,53px);line-height:.94;letter-spacing:-.06em;margin:10px 0 14px}.workflow p{font-size:15px;line-height:1.65;color:#a0aca5;max-width:450px}.stats{display:flex;gap:30px;margin:18px 0 20px}.stats strong{display:block;font-size:27px}.stats span{font-size:13px;color:#7e8c84}.workflow-ui{height:275px;position:relative}.screen{position:absolute;right:0;top:4px;width:420px;padding:12px;background:linear-gradient(145deg,#172720,#0e1714);border:1px solid #35473f;border-radius:13px;box-shadow:0 30px 70px #0009;transform:rotate(2deg)}.step{display:flex;align-items:center;gap:8px;padding:9px;background:#13211c;border:1px solid #26372f;border-radius:8px;margin-bottom:6px}.stepno{width:22px;height:22px;border-radius:50%;border:1px solid #71905d;color:var(--green);display:grid;place-items:center;font-size:13px;font-weight:900}.step b{font-size:14px}.step span{display:block;font-size:12px;color:#7d8b84;margin-top:2px}.note{position:absolute;left:2px;bottom:3px;color:#f1f5f2;font:14px cursive;line-height:1.05;transform:rotate(-4deg)}
+
+/* WHO */
+.who-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.who-card{display:flex;align-items:center;gap:8px;border:1px solid #e0e7e4;border-radius:8px;padding:10px;background:#fff}.wi{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:#eae8ff;color:#7c65df;font-size:14px;flex:none}.who-card:nth-child(2) .wi{background:#f0e7ff;color:#9564d8}.who-card:nth-child(3) .wi{background:#e4faec;color:#3ca366}.who-card:nth-child(4) .wi{background:#ffe9ef;color:#df6886}.who-card:nth-child(5) .wi{background:#e7efff;color:#4d80e8}.who-card b{font-size:13px;white-space:nowrap}
+
+/* PURCHASE */
+.purchase-wrap{padding:0 0 50px}.purchase{background:linear-gradient(120deg,#07110f,#10201a);border:1px solid #263a31;border-radius:15px;padding:27px;display:grid;grid-template-columns:.9fr 1.1fr;gap:25px;color:#fff}.purchase h2{font-size:39px;line-height:.94;letter-spacing:-.06em;margin:8px 0 12px}.purchase p{font-size:14px;line-height:1.55;color:#9ca9a2;max-width:330px}.buy-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buy{position:relative;background:#17251f;border:1px solid #33463d;border-radius:11px;padding:16px;min-height:156px}.buy.featured{border-color:#78a62e}.popular{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#65df55;color:#16320d;border-radius:99px;padding:4px 9px;font-size:12px;font-weight:900}.buy-icon{width:28px;height:28px;border-radius:7px;background:var(--green);color:#14200b;display:grid;place-items:center;font-size:15px;font-weight:900;margin-bottom:12px}.buy h3{font-size:15px;margin:0 0 5px}.buy p{font-size:13px;min-height:28px}.buy .btn{width:100%;padding:8px 10px}
+
+/* FAQ/FOOTER */
+.cta{text-align:center;padding:63px 0;background:#fff}.cta h2{font-size:55px;line-height:.93;letter-spacing:-.065em;margin:10px 0 12px}.cta p{font-size:15px;color:#6e7a76}.faq{background:#f7faf8}.faq-list{max-width:760px;margin:auto}.faq details{border-bottom:1px solid #dce5e1;padding:15px 0}.faq summary{font-size:15px;font-weight:800;cursor:pointer}.faq p{font-size:14px;color:#6e7a75}
+footer{padding:23px 0;border-top:1px solid #dfe7e3;background:#fff;color:#78837f;font-size:13px}.foot{display:flex;justify-content:space-between}.foot-links{display:flex;gap:18px}
+
+/* RESPONSIVE */
+@media(max-width:1050px){
+ .links{display:none}.hero-in,.workflow-grid,.purchase{grid-template-columns:1fr}.hero-copy{padding-bottom:0}.hero-ui{height:390px}.head{display:block}.head p{margin-top:13px;max-width:620px}.service-grid{grid-template-columns:repeat(2,1fr)}.challenge-grid{grid-template-columns:repeat(2,1fr)}.solution-grid{grid-template-columns:repeat(3,1fr)}.sol-card:nth-child(3):after{display:none}.who-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:650px){
+ .container{width:calc(100% - 30px)}.nav{height:58px}.nav-in{height:58px}.signin{display:none}.hero-copy{padding-top:45px}.hero h1{font-size:48px}.hero-ui{height:350px}.os{width:100%;height:270px;transform:none}.os-card{min-height:70px;padding:9px}.impact{right:-1px;top:23px}.actions-card{right:0;bottom:8px}.hand{display:none}.proofs{gap:11px}.proof{font-size:12px}
+ section{padding:48px 0}.head h2{font-size:38px}.challenge-grid,.solution-grid,.service-grid,.who-grid{grid-template-columns:1fr}.sol-card:not(:last-child):after{display:none}.workflow-ui{height:300px}.screen{width:100%;transform:none}.note{display:none}.buy-grid{grid-template-columns:1fr}.purchase{padding:20px}.purchase h2{font-size:36px}.cta h2{font-size:43px}.foot{flex-direction:column;gap:10px}
+}
+
+/* Added content panels */
+.service-desc{font-size:15px!important;line-height:1.5!important;color:#2f3d38!important;margin:8px 0 0!important;font-weight:500!important}
+.detail-section{background:#f7faf8}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.detail-card{background:#fff;border:1px solid #dce5e1;border-radius:11px;padding:18px}
+.detail-card.dark{background:linear-gradient(135deg,#0a1512,#13231d);border-color:#263a31;color:#fff}
+.detail-card h3{font-size:17px;margin:0 0 7px}
+.detail-card p{font-size:14px;line-height:1.6;color:#697671;margin:0}
+.detail-card.dark p{color:#9ba8a1}
+.detail-list{display:grid;gap:7px;margin-top:14px}
+.detail-item{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:#596661}
+.detail-card.dark .detail-item{color:#c2cbc6}
+.detail-item i{font-style:normal;color:#4b9d5e;font-weight:900}
+.deliverables{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:24px}
+.deliverable{padding:14px;border:1px solid #dce5e1;border-radius:9px;background:#fff}
+.deliverable b{font-size:14px;display:block;margin-bottom:4px}
+.deliverable span{font-size:13px;line-height:1.45;color:#77837e;display:block}
+.workflow-detail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:24px}
+.workflow-detail-card{border:1px solid #293b33;border-radius:9px;background:#111e19;padding:14px}
+.workflow-detail-card strong{font-size:18px;color:#caff45;display:block;margin-bottom:5px}
+.workflow-detail-card b{font-size:14px}.workflow-detail-card p{font-size:13px;color:#819088;line-height:1.45;margin:5px 0 0}
+@media(max-width:1050px){.deliverables,.workflow-detail{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.detail-grid,.deliverables,.workflow-detail{grid-template-columns:1fr}}
+
+
+/* More premium sales content */
+.benefits-section{background:#fff}
+.benefit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.benefit-card{border:1px solid #dce5e1;border-radius:11px;padding:19px;background:linear-gradient(145deg,#fff,#f9fbfa)}
+.benefit-card .big{font-size:25px;font-weight:900;letter-spacing:-.05em;color:#13201d;margin-bottom:13px}
+.benefit-card h3{font-size:15px;margin:0 0 6px}.benefit-card p{font-size:14px;line-height:1.55;color:#72807a;margin:0}
+.usecase-section{background:#f6faf8}
+.usecase-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:11px}
+.usecase-panel{border:1px solid #dce5e1;border-radius:12px;background:#fff;padding:21px}
+.usecase-panel.dark{background:linear-gradient(135deg,#07110f,#12221b);border-color:#263a31;color:#fff}
+.usecase-panel h3{font-size:15px;margin:0 0 7px}.usecase-panel p{font-size:14px;line-height:1.6;color:#718079;margin:0}
+.usecase-panel.dark p{color:#9ba8a1}
+.usecase-list{display:grid;gap:7px;margin-top:16px}
+.usecase-item{display:flex;gap:9px;align-items:flex-start;padding:9px;border-radius:8px;background:#f6f9f7;font-size:14px;color:#52605b}
+.dark .usecase-item{background:#12201b;color:#c6cfca}
+.usecase-item i{font-style:normal;color:#4ca05c;font-weight:900}
+.example-section{background:#fff}
+.example-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.example{border:1px solid #dce5e1;border-radius:11px;padding:17px;background:#fff;position:relative;overflow:hidden}
+.example:before{content:"";position:absolute;left:0;top:0;width:4px;height:100%;background:var(--green)}
+.example:nth-child(2):before{background:#4b84ee}.example:nth-child(3):before{background:#a078e7}
+.example-no{font-size:13px;color:#77847f;font-weight:900;letter-spacing:.12em}.example h3{font-size:15px;margin:7px 0 6px}.example p{font-size:14px;line-height:1.5;color:#74807b;margin:0}.example span{display:inline-block;margin-top:13px;font-size:12px;font-weight:850;padding:5px 8px;border-radius:99px;background:#edf8df;color:#487527}
+.resource-section{background:linear-gradient(120deg,#07110f,#102019);color:#fff}
+.resource-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.resource{border:1px solid #293c33;background:#12201b;border-radius:10px;padding:16px}
+.resource-icon{width:27px;height:27px;border-radius:7px;background:#213c29;color:var(--green);display:grid;place-items:center;font-size:15px;margin-bottom:17px}
+.resource h3{font-size:15px;margin:0 0 5px}.resource p{font-size:13px;line-height:1.5;color:#85928b;margin:0}
+.trust-section{background:#f7faf8}
+.trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.quote{border:1px solid #dce5e1;border-radius:11px;background:#fff;padding:19px}
+.quote-stars{color:#8dbb3f;font-size:15px;letter-spacing:2px}.quote p{font-size:15px;line-height:1.6;color:#56635e;margin:12px 0}.quote b{font-size:13px;color:#26312e}
+.comparison{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:25px}
+.compare-card{border:1px solid #dce5e1;border-radius:11px;padding:18px;background:#fff}.compare-card.dark{background:#10201a;color:#fff;border-color:#2b3f35}
+.compare-card h3{font-size:15px;margin:0 0 9px}.compare-card p{font-size:14px;color:#6d7974;line-height:1.5}.compare-card.dark p{color:#9ca9a2}
+.compare-list{display:grid;gap:6px}.compare-list div{font-size:14px;display:flex;gap:7px}.compare-list i{font-style:normal;color:#4ca45b}
+@media(max-width:1050px){.benefit-grid,.example-grid,.resource-grid,.trust-grid{grid-template-columns:repeat(2,1fr)}.usecase-grid,.comparison{grid-template-columns:1fr}}
+@media(max-width:650px){.benefit-grid,.example-grid,.resource-grid,.trust-grid{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+
+<header class="nav">
+<div class="container nav-in">
+<a class="brand" href="#"><span class="brand-mark">▲</span>AI Enterprise Studio</a>
+<nav class="links"><a href="#services">Products</a><a href="#solution">Solutions</a><a href="#purchase">Pricing</a><a href="#services">Resources</a><a href="#faq">FAQ</a></nav>
+<div class="nav-side"><a class="signin" href="#">Sign In</a><a class="nav-btn" href="#purchase">Get Started →</a></div>
+</div>
+</header>
+
+<main>
+<section class="hero">
+<div class="container hero-in">
+<div class="hero-copy">
+<div class="eyebrow">AI Advantage Agency</div>
+<h1>Build a Smarter,<br>More Efficient<br><span>Business with AI.</span></h1>
+<p>Identify opportunities. Streamline operations. Empower your team. The AI Advantage Agency helps you turn AI from a buzzword into real business results.</p>
+<div class="hero-actions"><a class="btn lime" href="#purchase">Get Started →</a><a class="btn outline" href="#solution">See How It Works ◉</a></div>
+<div class="proofs"><div class="proof"><i class="proof-icon">✦</i>Practical<br>&amp; Actionable</div><div class="proof"><i class="proof-icon">♧</i>Guided<br>Workflows</div><div class="proof"><i class="proof-icon">▦</i>Real Business<br>Applications</div></div>
+</div>
+<div class="hero-ui">
+<div class="os">
+<div class="os-rail"><b>A</b><span>⌕</span><span>▦</span><span>◈</span><span>↗</span></div>
+<div class="os-main">
+<div class="os-head"><div><h3>AI Operating System</h3><p>From Opportunity to Impact</p></div><span class="pill">AI ADVANTAGE</span></div>
+<div class="os-cards">
+<div class="os-card"><div class="os-icon">⌕</div><b>Discover Opportunities</b><small>Find where AI can improve work</small></div>
+<div class="os-card"><div class="os-icon">▦</div><b>Design Solutions</b><small>Create practical workflows</small></div>
+<div class="os-card"><div class="os-icon">ϟ</div><b>Implement Workflows</b><small>Move plans into action</small></div>
+<div class="os-card"><div class="os-icon">↗</div><b>Measure Results</b><small>Track and optimize impact</small></div>
+</div>
+<div class="os-bottom"><small>BUSINESS IMPACT</small><strong>+60%</strong></div>
+</div>
+</div>
+<div class="float impact"><b>Business Impact</b><small>OPERATIONAL GROWTH</small><strong>+60%</strong><div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<div class="float actions-card"><div><i>✓</i>Automate</div><div><i>✓</i>Simplify</div><div><i>✓</i>Empower</div><div><i>✓</i>Grow</div></div>
+<div class="hand">Turn ideas<br>into impact.</div>
+</div>
+</div>
+</section>
+
+<section class="section challenge">
+<div class="container">
+<div class="head"><div><div class="tag">The Challenge</div><h2>Great businesses<br>can still do better.</h2></div><p>Many businesses know AI can help, but face real challenges in putting it to work effectively. Without clear guidance, AI opportunities are often missed, and teams are left experimenting without a structure.</p></div>
+<div class="challenge-grid">
+<div class="challenge-card"><div class="ci">⌕</div><h3>Unclear opportunities</h3><p>Not knowing where AI can make a real difference.</p></div>
+<div class="challenge-card"><div class="ci">♧</div><h3>Manual, repetitive work</h3><p>Valuable time spent on tasks that could be automated.</p></div>
+<div class="challenge-card"><div class="ci">◈</div><h3>Scattered information</h3><p>Important knowledge is trapped in people and documents.</p></div>
+<div class="challenge-card"><div class="ci">♧</div><h3>Lack of governance</h3><p>Uncertainty around proper use, quality and control.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section solution" id="solution">
+<div class="container">
+<div class="solution-top"><div class="head" style="margin:0"><div><div class="tag">The Solution</div><h2>A clear path from<br>opportunity to impact.</h2></div><p>The AI Advantage Agency gives you a complete system to identify, design and implement AI solutions that work for your business.</p></div><a class="btn lime" href="#services">Explore the Services →</a></div>
+<div class="solution-grid">
+<div class="sol-card"><div class="sol-icon">⌕</div><small>01</small><h3>Assess</h3><p>Understand your current state.</p></div>
+<div class="sol-card"><div class="sol-icon">◌</div><small>02</small><h3>Identify</h3><p>Find high-value opportunities.</p></div>
+<div class="sol-card"><div class="sol-icon">▦</div><small>03</small><h3>Design</h3><p>Create practical AI solutions.</p></div>
+<div class="sol-card"><div class="sol-icon">ϟ</div><small>04</small><h3>Implement</h3><p>Turn plans into action.</p></div>
+<div class="sol-card"><div class="sol-icon">↗</div><small>05</small><h3>Measure</h3><p>Track results and optimize.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section services" id="services">
+<div class="container">
+<div class="head"><div><div class="tag">What's Included</div><h2>10 Essential Services.<br>A Complete AI Foundation.</h2></div><p>The AI Advantage Agency includes 10 specialized services designed to help you build real AI capability across your business.</p></div>
+<div class="service-grid">
+<div class="service"><div class="si">⌘</div><b>AI Readiness and<br>Opportunity Audit</b><p class="service-desc">Assess where AI can create practical value across the business.</p></div>
+<div class="service"><div class="si">▦</div><b>Process and<br>Task Mapping</b><p class="service-desc">Map repeatable work, handoffs, bottlenecks and improvement opportunities.</p></div>
+<div class="service"><div class="si">✣</div><b>AI Use-Case Prioritization<br>and Roadmap</b><p class="service-desc">Rank opportunities and turn them into a practical implementation roadmap.</p></div>
+<div class="service"><div class="si">⌘</div><b>Prompt Systems and<br>Workflow SOPs</b><p class="service-desc">Create repeatable prompt systems, SOPs and quality checkpoints.</p></div>
+<div class="service"><div class="si">✂</div><b>Marketing and Content<br>Workflow Enablement</b><p class="service-desc">Build structured AI workflows for planning, creation and content operations.</p></div>
+<div class="service"><div class="si">▣</div><b>Customer Communication<br>Workflow Enablement</b><p class="service-desc">Improve customer-facing communication with consistent guided workflows.</p></div>
+<div class="service"><div class="si">▥</div><b>Administration and Operations<br>Workflow Enablement</b><p class="service-desc">Reduce repetitive operational work with documented AI-assisted processes.</p></div>
+<div class="service"><div class="si">◫</div><b>Knowledge Base and<br>Staff Enablement</b><p class="service-desc">Turn business knowledge into usable guidance, resources and staff workflows.</p></div>
+<div class="service"><div class="si">◈</div><b>AI Governance, Risk<br>and Quality Controls</b><p class="service-desc">Define responsible-use boundaries, review gates and quality controls.</p></div>
+<div class="service"><div class="si">↗</div><b>AI Reporting and<br>Optimization</b><p class="service-desc">Measure workflow performance, identify gaps and improve the system over time.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section workflow">
+<div class="container workflow-grid">
+<div>
+<div class="tag">Guided Workflows</div>
+<h2>31 Guided Workflows.<br>From Strategy to Execution.</h2>
+<p>Step-by-step workflows guide you through each service, with structured inputs, AI-powered outputs, and human review — so you can confidently turn AI opportunities into real results.</p>
+<div class="stats"><div><strong>31</strong><span>Workflows</span></div><div><strong>10</strong><span>Services</span></div><div><strong>1</strong><span>Complete System</span></div></div>
+<a class="btn lime" href="#purchase">See Workflow Examples →</a>
+</div>
+<div class="workflow-ui">
+<div class="screen">
+<div class="step"><div class="stepno">1</div><div><b>Provide Your Inputs</b><span>Answer a few guided questions</span></div></div>
+<div class="step"><div class="stepno">2</div><div><b>Generate AI Instructions</b><span>Get a tailored prompt to use with AI</span></div></div>
+<div class="step"><div class="stepno">3</div><div><b>Review AI Output</b><span>Check and refine the results</span></div></div>
+<div class="step"><div class="stepno">4</div><div><b>Save and Implement</b><span>Keep your results and put them to work</span></div></div>
+</div>
+<div class="note">Simple.<br>Structured.<br><b>Effective.</b></div>
+</div>
+</div>
+</section>
+
+<section class="section who">
+<div class="container">
+<div class="head"><div><div class="tag">Who It's For</div><h2>Built for Forward-Thinking<br>Businesses.</h2></div><p>Whether you're a local business, a growing company, or a multi-location operator, the AI Advantage Agency helps you build the skills, systems and workflows to use AI with confidence.</p></div>
+<div class="who-grid">
+<div class="who-card"><i class="wi">♧</i><b>Service Businesses</b></div><div class="who-card"><i class="wi">▣</i><b>Professional Firms</b></div><div class="who-card"><i class="wi">↗</i><b>Growing Companies</b></div><div class="who-card"><i class="wi">◉</i><b>Multi-Location Operators</b></div><div class="who-card"><i class="wi">♧</i><b>Internal Teams</b></div>
+</div>
+</div>
+</section>
+
+
+<!-- WHAT YOU GET -->
+<section class="section detail-section">
+<div class="container">
+  <div class="head">
+    <div><div class="tag">What You Get</div><h2>A practical system your team can actually use.</h2></div>
+    <p>AI Advantage Agency is designed as an operating system for AI enablement — not a collection of disconnected prompts. Each area moves from understanding the business to designing, reviewing and improving practical workflows.</p>
+  </div>
+  <div class="detail-grid">
+    <div class="detail-card">
+      <h3>Built around your business</h3>
+      <p>Start with your agency configuration and client context, then work through structured services and guided workflows.</p>
+      <div class="detail-list">
+        <div class="detail-item"><i>✓</i><span>Business and client context captured before execution</span></div>
+        <div class="detail-item"><i>✓</i><span>Service-specific inputs instead of generic one-size-fits-all prompts</span></div>
+        <div class="detail-item"><i>✓</i><span>Reusable outputs that can be reviewed, refined and saved</span></div>
+      </div>
+    </div>
+    <div class="detail-card dark">
+      <h3>Human review stays in control</h3>
+      <p>AI generates structured assistance. Your team remains responsible for approval, implementation, permissions and final quality control.</p>
+      <div class="detail-list">
+        <div class="detail-item"><i>✓</i><span>Review requirements are built into workflows</span></div>
+        <div class="detail-item"><i>✓</i><span>Approval gates before important implementation decisions</span></div>
+        <div class="detail-item"><i>✓</i><span>No claim of autonomous client-account deployment</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="deliverables">
+    <div class="deliverable"><b>Opportunity Audits</b><span>Identify practical AI opportunities and current-state gaps.</span></div>
+    <div class="deliverable"><b>System Designs</b><span>Turn selected opportunities into structured solution designs.</span></div>
+    <div class="deliverable"><b>Implementation Playbooks</b><span>Translate approved designs into owners, testing and rollout actions.</span></div>
+    <div class="deliverable"><b>Optimization Results</b><span>Review outcomes and create a path for continuous improvement.</span></div>
+  </div>
+</div>
+</section>
+
+<!-- HOW THE WORKFLOWS WORK -->
+<section class="section workflow" style="background:linear-gradient(120deg,#08120f,#102019)">
+<div class="container">
+  <div class="head" style="display:block;margin-bottom:0">
+    <div class="tag">Inside Every Workflow</div>
+    <h2>Structured enough to guide.<br>Flexible enough to adapt.</h2>
+    <p style="margin-top:13px;max-width:620px;color:#9eaaa4">Every workflow follows the same reliable operating pattern while using its own inputs, instructions, deliverable and review requirements.</p>
+  </div>
+  <div class="workflow-detail">
+    <div class="workflow-detail-card"><strong>01</strong><b>Inputs</b><p>Capture the specific business information required for this workflow.</p></div>
+    <div class="workflow-detail-card"><strong>02</strong><b>AI Instruction</b><p>Generate a tailored instruction using the product, service and workflow context.</p></div>
+    <div class="workflow-detail-card"><strong>03</strong><b>Review</b><p>Evaluate the AI output against workflow-specific quality and approval requirements.</p></div>
+    <div class="workflow-detail-card"><strong>04</strong><b>Save Result</b><p>Keep the approved output so it can become part of the implementation record.</p></div>
+  </div>
+</div>
+</section>
+
+
+<!-- BUSINESS VALUE -->
+<section class="section benefits-section">
+<div class="container">
+  <div class="head">
+    <div><div class="tag">Why AI Advantage</div><h2>More than prompts.<br>A repeatable business system.</h2></div>
+    <p>Designed to help agencies and teams move from scattered AI experimentation to a structured operating approach that can be reused across real business situations.</p>
+  </div>
+  <div class="benefit-grid">
+    <div class="benefit-card"><div class="big">01</div><h3>Find the right opportunities</h3><p>Focus attention on areas where AI can create useful, measurable business value instead of chasing every new tool.</p></div>
+    <div class="benefit-card"><div class="big">02</div><h3>Create repeatable workflows</h3><p>Turn successful approaches into structured processes that teams can follow, review and improve.</p></div>
+    <div class="benefit-card"><div class="big">03</div><h3>Work with confidence</h3><p>Use clear review requirements and approval gates so AI-assisted work stays accountable and practical.</p></div>
+    <div class="benefit-card"><div class="big">04</div><h3>Reduce operational friction</h3><p>Map repetitive work, identify handoff problems and create better ways for people and AI to work together.</p></div>
+    <div class="benefit-card"><div class="big">05</div><h3>Enable your team</h3><p>Give staff usable guidance, knowledge structures and workflows instead of leaving everyone to experiment alone.</p></div>
+    <div class="benefit-card"><div class="big">06</div><h3>Improve continuously</h3><p>Review results, identify gaps and optimize workflows as your business, team and AI capabilities evolve.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- USE CASES -->
+<section class="section usecase-section">
+<div class="container">
+  <div class="head">
+    <div><div class="tag">Business Applications</div><h2>Where the system<br>can create value.</h2></div>
+    <p>Use the agency across strategy, marketing, operations, customer communication, knowledge management and governance.</p>
+  </div>
+  <div class="usecase-grid">
+    <div class="usecase-panel">
+      <h3>Across everyday business work</h3>
+      <p>Start with the work your team already performs and identify where structured AI assistance can make it clearer, faster or more consistent.</p>
+      <div class="usecase-list">
+        <div class="usecase-item"><i>✓</i><span>Research, summarization and repetitive knowledge work</span></div>
+        <div class="usecase-item"><i>✓</i><span>Marketing planning and content production workflows</span></div>
+        <div class="usecase-item"><i>✓</i><span>Customer communication and response support</span></div>
+        <div class="usecase-item"><i>✓</i><span>Administration, operations and internal processes</span></div>
+        <div class="usecase-item"><i>✓</i><span>Business knowledge and staff enablement</span></div>
+      </div>
+    </div>
+    <div class="usecase-panel dark">
+      <h3>Built for controlled capability</h3>
+      <p>The objective is not to automate everything. It is to create useful AI assistance that is repeatable, reviewable and appropriate for the business.</p>
+      <div class="usecase-list">
+        <div class="usecase-item"><i>✓</i><span>Business goals before technology</span></div>
+        <div class="usecase-item"><i>✓</i><span>Human review built into the workflow</span></div>
+        <div class="usecase-item"><i>✓</i><span>Pilot before expansion</span></div>
+        <div class="usecase-item"><i>✓</i><span>Clear ownership and approval points</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- EXAMPLES -->
+<section class="section example-section">
+<div class="container">
+  <div class="head">
+    <div><div class="tag">Workflow Examples</div><h2>See how strategy<br>becomes execution.</h2></div>
+    <p>The 31 workflows cover the full AI enablement journey across the agency's 10 services.</p>
+  </div>
+  <div class="example-grid">
+    <div class="example"><div class="example-no">EXAMPLE 01</div><h3>AI Readiness Assessment</h3><p>Review current work, identify AI opportunities and establish a practical starting point.</p><span>Readiness</span></div>
+    <div class="example"><div class="example-no">EXAMPLE 02</div><h3>System Design</h3><p>Take a selected opportunity and define the workflow, inputs, controls and desired outcome.</p><span>Design</span></div>
+    <div class="example"><div class="example-no">EXAMPLE 03</div><h3>Implementation Playbook</h3><p>Translate an approved design into owners, testing, rollout actions and review gates.</p><span>Implementation</span></div>
+  </div>
+</div>
+</section>
+
+<!-- RESOURCES -->
+<section class="section resource-section">
+<div class="container">
+  <div class="head">
+    <div><div class="tag">Included Resources</div><h2>Everything you need<br>to operate the system.</h2></div>
+    <p>Alongside the guided workflows, the agency includes practical resources that support delivery, positioning and business use.</p>
+  </div>
+  <div class="resource-grid">
+    <div class="resource"><div class="resource-icon">▤</div><h3>Operator Guide</h3><p>Understand how to use the agency, configure context and work through the system.</p></div>
+    <div class="resource"><div class="resource-icon">↗</div><h3>Business Strategy</h3><p>Use the agency as part of a practical AI enablement and service-delivery approach.</p></div>
+    <div class="resource"><div class="resource-icon">◫</div><h3>Client Sales Page</h3><p>Position the service clearly when presenting AI enablement to prospective clients.</p></div>
+    <div class="resource"><div class="resource-icon">✦</div><h3>Sales Copy & Positioning</h3><p>Support messaging, offers and positioning around practical AI business value.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- DECISION -->
+<section class="section trust-section">
+<div class="container">
+  <div class="head">
+    <div><div class="tag">Make It Yours</div><h2>Start focused.<br>Expand when ready.</h2></div>
+    <p>Purchase the AI Advantage Agency individually when you want a focused AI enablement system, or move to the complete suite when you need the full range of business-growth systems.</p>
+  </div>
+  <div class="comparison">
+    <div class="compare-card">
+      <h3>Choose AI Advantage Agency</h3>
+      <p>Best when your immediate goal is building AI capability and improving how your business uses AI.</p>
+      <div class="compare-list">
+        <div><i>✓</i>10 specialized services</div>
+        <div><i>✓</i>31 guided workflows</div>
+        <div><i>✓</i>Structured inputs and outputs</div>
+        <div><i>✓</i>Human review and approval gates</div>
+      </div>
+    </div>
+    <div class="compare-card dark">
+      <h3>Choose the Complete Suite</h3>
+      <p>Best when you want the broader AI Enterprise Studio system with all ten specialized agencies.</p>
+      <div class="compare-list">
+        <div><i>✓</i>10 agencies</div>
+        <div><i>✓</i>99 services</div>
+        <div><i>✓</i>306 guided workflows</div>
+        <div><i>✓</i>One complete operating ecosystem</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="purchase-wrap" id="purchase">
+<div class="container">
+<div class="purchase">
+<div class="purchase-copy"><div class="eyebrow">Get Started Today</div><h2>Choose Your Path<br>to AI Advantage.</h2><p>Start with the AI Advantage Agency or explore the complete suite of 10 agencies. Either way, you get a powerful system to grow your business with AI.</p></div>
+<div class="buy-grid">
+<div class="buy featured"><div class="popular">Popular</div><div class="buy-icon">A</div><h3>AI Advantage Agency</h3><p>Get started with this agency and its 10 services and 31 workflows.</p><a class="btn lime" href="#">Get This Agency →</a></div>
+<div class="buy"><div class="buy-icon" style="background:#e7efff;color:#4c78d8">▱</div><h3>Complete Suite</h3><p>Get all 10 agencies with 99 services and 306 workflows.</p><a class="btn white" href="#">Explore Complete Suite</a></div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="cta">
+<div class="container">
+<div class="tag" style="justify-content:center">Start Building</div>
+<h2>Build a smarter business<br>with AI.</h2>
+<p>Turn opportunities into practical workflows, systems and measurable business capability.</p>
+<div class="hero-actions" style="justify-content:center"><a class="btn blue" href="#purchase">Get AI Advantage →</a><a class="btn white" href="#faq">Learn More</a></div>
+</div>
+</section>
+
+<section class="section faq" id="faq">
+<div class="container">
+<div class="head" style="display:block;text-align:center;max-width:700px;margin:0 auto 18px"><div class="tag" style="justify-content:center">FAQ</div><h2>Questions before you start?</h2></div>
+<div class="faq-list">
+<details><summary>What is AI Advantage Agency?</summary><p>A structured AI enablement system for identifying opportunities, designing workflows, creating implementation plans and improving how teams use AI.</p></details>
+<details><summary>How many services and workflows are included?</summary><p>AI Advantage Agency includes 10 services and 31 guided workflows.</p></details>
+<details><summary>Can I purchase this agency separately?</summary><p>Yes. AI Advantage Agency can be purchased individually, or you can purchase the complete suite containing all 10 agencies.</p></details>
+<details><summary>Does the system automatically change client accounts?</summary><p>No. Human review, approvals, implementation and permissions remain with the appropriate people.</p></details>
+
+<details><summary>Can I use the agency for different clients?</summary><p>Yes. The workspace is designed around agency and client context, so the same system can support separate client projects while keeping workflow results independent.</p></details>
+<details><summary>What happens after an AI output is generated?</summary><p>You review the output using the workflow's review requirements, refine it as needed, and save the approved result. The system is designed around human approval rather than autonomous deployment.</p></details>
+<details><summary>Can I start with only one service?</summary><p>Yes. Services can be selected according to the agency configuration and used through their associated guided workflows.</p></details>
+</div>
+</div>
+</section>
+</main>
+
+<footer><div class="container foot"><span>© 2026 AI Enterprise Studio. All rights reserved.</span><span class="foot-links"><a href="#services">Products</a><a href="#solution">Solutions</a><a href="#purchase">Pricing</a><a href="#faq">FAQ</a></span></div></footer>
+</body>
+</html>

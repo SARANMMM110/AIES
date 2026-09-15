@@ -1,0 +1,24 @@
+{
+  "name": "ai-enterprise-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Enterprise Studio — centralized platform for independent AI agency products (Client 5DF)",
+  "scripts": {
+    "dev": "pnpm run --parallel dev:api dev:web",
+    "dev:api": "pnpm --filter @aes/api dev",
+    "dev:web": "pnpm --filter @aes/web dev",
+    "build": "pnpm --filter @aes/shared build && pnpm --filter @aes/database build && pnpm --filter @aes/api build && pnpm --filter @aes/web build",
+    "db:generate": "pnpm --filter @aes/database generate",
+    "db:migrate": "pnpm --filter @aes/database migrate",
+    "db:migrate:dev": "pnpm --filter @aes/database migrate:dev",
+    "db:seed": "pnpm --filter @aes/database seed",
+    "db:validate": "pnpm --filter @aes/database validate:catalog",
+    "db:studio": "pnpm --filter @aes/database studio",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.22.0"
+}

@@ -1,0 +1,92 @@
+/* Shared premium polish for every admin console page */
+
+.admin-console-root {
+  min-height: 100vh;
+}
+
+.admin-console-root .page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.admin-console-root .page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-console-root .panel,
+.admin-console-root .reseller-card {
+  padding: 0.85rem 0.95rem;
+}
+
+.admin-console-root .stack-lg,
+.admin-console-root .stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-console-root .panel.stat {
+  padding: 0.65rem 0.75rem;
+}
+
+.admin-console-root .panel.stat span {
+  display: block;
+  color: var(--admin-muted, #5c6b64);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.admin-console-root .panel.stat strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+}
+
+.admin-console-root .simple-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-console-root .simple-list > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--admin-line, #d7e0db);
+}
+
+.admin-console-root .list-meta,
+.admin-console-root .muted {
+  color: var(--admin-muted, #5c6b64);
+}
+
+.admin-console-root .grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+
+.admin-console-root .section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.admin-console-root .section-heading h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  letter-spacing: -0.02em;
+}

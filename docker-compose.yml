@@ -1,0 +1,22 @@
+# Optional local PostgreSQL via Docker (not required if you use a local install).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aes-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_enterprise_studio
+    ports:
+      - "5432:5432"
+    volumes:
+      - aes_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  aes_pg_data:

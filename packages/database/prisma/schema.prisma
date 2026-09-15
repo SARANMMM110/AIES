@@ -1,0 +1,1106 @@
+// AI Enterprise Studio — Core Platform Schema
+// Stage 1: auth, products, access, clients/projects, workflows
+// Stage 2: reusable product framework fields (shortDescription, thumbnail/icon)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Users
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  productAccess   ProductAccess[]
+  bundleAccess    BundleAccess[]
+  purchases       Purchase[]
+  clients         Client[]
+  projects        Project[]
+  workflowResults WorkflowResult[]
+  sessions        Session[]
+  productConfigs  UserProductConfig[]
+  wikiBookmarks   UserWikiBookmark[]
+  wikiProgress    UserWikiProgress[]
+  wikiHistory     UserWikiHistory[]
+  resellerEntitlements ResellerEntitlement[]
+  resellerOffers       ResellerOffer[]
+  resellerCustomers    ResellerCustomer[] @relation("ResellerOwnedCustomers")
+  resellerEndUserLinks ResellerCustomer[] @relation("ResellerEndUser")
+  resellerSales        ResellerSale[]
+  resellerCustomerAccess ResellerCustomerAccess[]
+  resellerBranding     ResellerBranding?
+  resellerAgencyProfiles ResellerAgencyProfile[]
+  resellerInquiries    ResellerInquiry[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+/// Optional server-side session store (supports logout / revocation).
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Products (Agency modules) — not hard-coded; admin creates & publishes
+// ---------------------------------------------------------------------------
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  name             String
+  slug             String        @unique
+  description      String?
+  /// Card / list blurb shown on the central dashboard
+  shortDescription String?
+  status           ProductStatus @default(DRAFT)
+  /// Price in smallest currency unit (e.g. cents)
+  priceCents       Int?
+  currency         String        @default("USD")
+  /// Optional marketing / positioning summary
+  tagline          String?
+  /// Image URL for product cards / workspace header
+  thumbnailUrl     String?
+  /// Short icon key or emoji-like mark for UI (not hard-coded per agency)
+  icon             String?
+  /// Product-specific instructions / config for the reusable template framework
+  configuration    Json?
+  metadata         Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  resources       ProductResource[]
+  productAccess   ProductAccess[]
+  bundleItems     BundleItem[]
+  purchaseItems   PurchaseItem[]
+  projects        Project[]
+  workflows       WorkflowDefinition[]
+  userConfigs     UserProductConfig[]
+  wikiArticleLinks WikiArticleAgency[]
+  resellerPolicies     ResellerPolicy[]
+  resellerEntitlements ResellerEntitlement[]
+  resellerOfferProducts ResellerOfferProduct[]
+  resellerCustomerAccess ResellerCustomerAccess[]
+  resellerSales          ResellerSale[] @relation("ResellerSaleProduct")
+  resellerAgencyProfiles ResellerAgencyProfile[]
+  salesInquiries         SalesInquiry[]
+
+  @@index([status])
+  @@map("products")
+}
+
+enum ProductResourceType {
+  SERVICE
+  WORKFLOW
+  OPERATOR_GUIDE
+  SALES_PAGE
+  SALES_COPY
+  POSITIONING
+  BUSINESS_STRATEGY
+  OTHER
+}
+
+/// Flexible resources attached to a product (services, guides, sales pages, etc.)
+model ProductResource {
+  id          String              @id @default(cuid())
+  productId   String
+  type        ProductResourceType
+  title       String
+  slug        String
+  description String?
+  content     Json?
+  sortOrder   Int                 @default(0)
+  isPublished Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  product   Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  workflows WorkflowDefinition[]
+
+  @@unique([productId, slug])
+  @@index([productId, type])
+  @@map("product_resources")
+}
+
+/// Per-user Agency Builder configuration for a product (Stage 3B).
+model UserProductConfig {
+  id                          String   @id @default(cuid())
+  userId                      String
+  productId                   String
+  aiPlatform                  String?
+  agencyName                  String?
+  country                     String?
+  targetNiche                 String?
+  geographicServiceArea       String?
+  experienceLevel             String?
+  preferredDeliveryModel      String?
+  weeklyTimeAvailability      String?
+  monthlyIncomeOrClientTarget String?
+  /// Selected ProductResource SERVICE ids for this user+agency
+  selectedServiceIds          Json     @default("[]")
+  /// Extra builder fields / preferences
+  extras                      Json?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("user_product_configs")
+}
+
+/// Platform-shared resources (e.g. Agency Wiki) — not duplicated per product.
+model SharedResource {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String?
+  content     Json?
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shared_resources")
+}
+
+// ---------------------------------------------------------------------------
+// Bundles — many-to-many with products via BundleItem
+// ---------------------------------------------------------------------------
+
+enum BundleStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Bundle {
+  id               String       @id @default(cuid())
+  name             String
+  slug             String       @unique
+  description      String?
+  shortDescription String?
+  status           BundleStatus @default(DRAFT)
+  priceCents       Int?
+  currency         String       @default("USD")
+  thumbnailUrl     String?
+  icon             String?
+  displayOrder     Int          @default(0)
+  metadata         Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  items         BundleItem[]
+  bundleAccess  BundleAccess[]
+  productAccess ProductAccess[]
+  purchaseItems PurchaseItem[]
+  resellerPolicies     ResellerPolicy[]
+  resellerEntitlements ResellerEntitlement[]
+  resellerSales        ResellerSale[]
+  salesInquiries       SalesInquiry[]
+
+  @@index([status])
+  @@index([displayOrder])
+  @@map("bundles")
+}
+
+model BundleItem {
+  id        String   @id @default(cuid())
+  bundleId  String
+  productId String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  bundle  Bundle  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, productId])
+  @@index([productId])
+  @@map("bundle_items")
+}
+
+// ---------------------------------------------------------------------------
+// Access Control — individual product and/or via bundle
+// ---------------------------------------------------------------------------
+
+enum AccessSource {
+  DIRECT
+  BUNDLE
+  ADMIN_GRANT
+  /// End-customer access sold through a reseller offer — not reseller rights
+  RESELLER
+}
+
+enum AccessStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model ProductAccess {
+  id        String       @id @default(cuid())
+  userId    String
+  productId String
+  source    AccessSource @default(DIRECT)
+  status    AccessStatus @default(ACTIVE)
+  /// When access came from a bundle purchase/grant
+  bundleId  String?
+  startsAt  DateTime     @default(now())
+  endsAt    DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bundle  Bundle?  @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  resellerCustomerAccess ResellerCustomerAccess[]
+
+  /// Uniqueness for nullable bundleId is enforced in application logic
+  /// (PostgreSQL treats NULLs as distinct in unique indexes).
+  @@index([userId, productId, status])
+  @@index([userId, status])
+  @@index([productId])
+  @@index([bundleId])
+  @@map("product_access")
+}
+
+model BundleAccess {
+  id        String       @id @default(cuid())
+  userId    String
+  bundleId  String
+  status    AccessStatus @default(ACTIVE)
+  source    AccessSource @default(DIRECT)
+  startsAt  DateTime     @default(now())
+  endsAt    DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bundle Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bundleId])
+  @@index([userId, status])
+  @@map("bundle_access")
+}
+
+// ---------------------------------------------------------------------------
+// Purchases — transaction records (separate from ProductAccess / BundleAccess)
+// Phase 5: gateway-ready; no payment provider in this stage.
+// ---------------------------------------------------------------------------
+
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PurchaseType {
+  PRODUCT
+  MULTI_PRODUCT
+  BUNDLE
+}
+
+enum PurchaseItemType {
+  PRODUCT
+  BUNDLE
+}
+
+model Purchase {
+  id                  String         @id @default(cuid())
+  /// Human-readable code e.g. PUR-A1B2C3D4
+  code                String         @unique
+  userId              String
+  status              PurchaseStatus @default(PENDING)
+  purchaseType        PurchaseType
+  /// Pre-discount snapshot (coupon-ready)
+  subtotalAmount      Int            @default(0)
+  /// Discount applied at purchase time (coupon-ready; server-only)
+  discountAmount      Int            @default(0)
+  totalAmount         Int            @default(0)
+  currency            String         @default("USD")
+  /// PENDING | REQUIRES_PAYMENT | PAID | FAILED | CANCELLED | REFUNDED | SIMULATED
+  paymentStatus       String         @default("PENDING")
+  paymentNote         String?
+  /// simulated | stripe | …
+  paymentProvider     String?
+  /// Checkout / PaymentIntent / Session ID from provider
+  providerSessionId   String?        @unique
+  /// Charge / payment intent ID once paid
+  providerPaymentId   String?        @unique
+  paidAt              DateTime?
+  accessProvisionedAt DateTime?
+  cancelledAt         DateTime?
+  refundedAt          DateTime?
+  cancellationReason  String?
+  refundReason        String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         PurchaseItem[]
+  paymentEvents PaymentEvent[]
+  resellerEntitlements ResellerEntitlement[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([purchaseType])
+  @@index([paymentStatus])
+  @@map("purchases")
+}
+
+/// Webhook / payment event idempotency log
+model PaymentEvent {
+  id            String   @id @default(cuid())
+  provider      String
+  /// Provider event ID (unique per provider)
+  eventId       String
+  purchaseId    String?
+  eventType     String
+  amountVerified Boolean @default(false)
+  processedAt   DateTime @default(now())
+  /// Non-sensitive summary only
+  summary       Json?
+
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  resellerSale ResellerSale? @relation(fields: [resellerSaleId], references: [id], onDelete: SetNull)
+  resellerSaleId String?
+
+  @@unique([provider, eventId])
+  @@index([purchaseId])
+  @@index([resellerSaleId])
+  @@map("payment_events")
+}
+
+model PurchaseItem {
+  id         String           @id @default(cuid())
+  purchaseId String
+  itemType   PurchaseItemType
+  productId  String?
+  bundleId   String?
+  quantity   Int              @default(1)
+  /// Unit price snapshot at purchase time (smallest currency unit)
+  price      Int              @default(0)
+  createdAt  DateTime         @default(now())
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+  bundle   Bundle?  @relation(fields: [bundleId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@index([bundleId])
+  @@map("purchase_items")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log — commercial / admin actions (Phase 6)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Clients & Projects
+// ---------------------------------------------------------------------------
+
+model Client {
+  id               String   @id @default(cuid())
+  ownerId          String
+  name             String
+  email            String?
+  company          String?
+  notes            String?
+  businessType     String?
+  industry         String?
+  location         String?
+  serviceArea      String?
+  website          String?
+  contactPhone     String?
+  targetCustomers  String?
+  currentProcess   String?
+  existingTools    String?
+  marketingChannels String?
+  mainProblems     String?
+  goals            String?
+  /// Agency-specific additional fields
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@index([ownerId])
+  @@map("clients")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  ownerId     String
+  clientId    String
+  productId   String?
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  owner             User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  product           Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  workflowProgress  WorkflowProgress[]
+  workflowResults   WorkflowResult[]
+
+  @@index([ownerId])
+  @@index([clientId])
+  @@index([productId])
+  @@map("projects")
+}
+
+// ---------------------------------------------------------------------------
+// Workflows & Results
+// ---------------------------------------------------------------------------
+
+/// Product-scoped workflow definition, optionally linked to a SERVICE resource.
+/// Stage 3B authors original AES guided workflow content into this model.
+model WorkflowDefinition {
+  id                 String   @id @default(cuid())
+  productId          String
+  /// When set, workflow belongs to a specific service under the product
+  serviceResourceId  String?
+  key                String
+  name               String
+  description        String?
+  purpose            String?
+  displayOrder       Int      @default(0)
+  /// Field definitions: [{ key, label, type, required, placeholder, help }]
+  inputs             Json?
+  /// Provider-ready instruction template with {{placeholders}}
+  aiInstructionTemplate String? @db.Text
+  /// Expected outputs / deliverables
+  outputDefinition   Json?
+  /// Human review / approval requirements before client impact
+  reviewRequirements Json?
+  /// Suggested next workflow/action after save
+  nextAction         String?
+  steps              Json?
+  isActive           Boolean  @default(true)
+  /// True while workflow content is still a draft structure slot
+  contentPending     Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  serviceResource ProductResource? @relation(fields: [serviceResourceId], references: [id], onDelete: SetNull)
+  progress        WorkflowProgress[]
+  wikiArticleLinks WikiArticleWorkflow[]
+
+  @@unique([productId, key])
+  @@index([serviceResourceId])
+  @@index([productId, serviceResourceId])
+  @@map("workflow_definitions")
+}
+
+enum WorkflowProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model WorkflowProgress {
+  id              String                  @id @default(cuid())
+  projectId       String
+  workflowId      String?
+  workflowKey     String
+  status          WorkflowProgressStatus  @default(NOT_STARTED)
+  currentStep     Int                     @default(0)
+  progressPercent Int                     @default(0)
+  state           Json?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  project  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflow WorkflowDefinition? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([workflowKey])
+  @@map("workflow_progress")
+}
+
+/// Generated / saved results from workflows
+model WorkflowResult {
+  id          String   @id @default(cuid())
+  projectId   String
+  ownerId     String
+  workflowKey String
+  title       String?
+  content     Json
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([ownerId])
+  @@map("workflow_results")
+}
+
+// ---------------------------------------------------------------------------
+// Agency Wiki — shared platform knowledge (NOT a product / service / workflow)
+// ---------------------------------------------------------------------------
+
+enum WikiStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model WikiCategory {
+  id           String     @id @default(cuid())
+  name         String
+  slug         String     @unique
+  description  String?
+  displayOrder Int        @default(0)
+  status       WikiStatus @default(PUBLISHED)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  articles WikiArticle[]
+
+  @@index([displayOrder])
+  @@map("wiki_categories")
+}
+
+model WikiArticle {
+  id           String     @id @default(cuid())
+  categoryId   String
+  title        String
+  slug         String
+  summary      String
+  /// Structured sections: whatThisMeans, whyItMatters, whenToUse, steps, example,
+  /// commonMistakes, checklist, aiAssistance, humanReview, nextAction
+  content      Json
+  keywords     String[]   @default([])
+  tags         String[]   @default([])
+  displayOrder Int        @default(0)
+  status       WikiStatus @default(DRAFT)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  category         WikiCategory              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  relatedAgencies  WikiArticleAgency[]
+  relatedWorkflows WikiArticleWorkflow[]
+  relatedFrom      WikiArticleRelatedArticle[] @relation("WikiArticleRelatedFrom")
+  relatedTo        WikiArticleRelatedArticle[] @relation("WikiArticleRelatedTo")
+  bookmarks        UserWikiBookmark[]
+  progress         UserWikiProgress[]
+  history          UserWikiHistory[]
+
+  @@unique([categoryId, slug])
+  @@index([status, displayOrder])
+  @@index([title])
+  @@map("wiki_articles")
+}
+
+model WikiArticleAgency {
+  articleId String
+  productId String
+
+  article WikiArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  product Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, productId])
+  @@index([productId])
+  @@map("wiki_article_agencies")
+}
+
+model WikiArticleWorkflow {
+  articleId  String
+  workflowId String
+
+  article  WikiArticle        @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  workflow WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, workflowId])
+  @@index([workflowId])
+  @@map("wiki_article_workflows")
+}
+
+model WikiArticleRelatedArticle {
+  articleId        String
+  relatedArticleId String
+
+  article        WikiArticle @relation("WikiArticleRelatedFrom", fields: [articleId], references: [id], onDelete: Cascade)
+  relatedArticle WikiArticle @relation("WikiArticleRelatedTo", fields: [relatedArticleId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, relatedArticleId])
+  @@index([relatedArticleId])
+  @@map("wiki_article_related")
+}
+
+model UserWikiBookmark {
+  userId    String
+  articleId String
+  createdAt DateTime @default(now())
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article WikiArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, articleId])
+  @@index([articleId])
+  @@map("user_wiki_bookmarks")
+}
+
+model UserWikiProgress {
+  userId      String
+  articleId   String
+  completedAt DateTime @default(now())
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article WikiArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, articleId])
+  @@index([articleId])
+  @@map("user_wiki_progress")
+}
+
+model UserWikiHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  articleId String
+  viewedAt  DateTime @default(now())
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article WikiArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@index([userId, viewedAt])
+  @@index([articleId])
+  @@map("user_wiki_history")
+}
+
+// ---------------------------------------------------------------------------
+// Phase R — customer reseller / white-label (NOT catalog products)
+// ProductAccess = right to use. ResellerEntitlement = right to resell.
+// ---------------------------------------------------------------------------
+
+enum ResellerScope {
+  PRODUCT
+  BUNDLE
+  COMPLETE_SUITE
+}
+
+enum ResellerEntitlementStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum ResellerOfferStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum ResellerSaleStatus {
+  PENDING
+  COMPLETED
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum ResellerCustomerStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+/// Admin commercial rule. Eligibility is never accepted from the buyer client.
+model ResellerPolicy {
+  id            String        @id @default(cuid())
+  scope         ResellerScope
+  productId     String?
+  bundleId      String?
+  enabled       Boolean       @default(false)
+  allowBranding Boolean       @default(true)
+  minPriceCents Int?
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bundle  Bundle?  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  @@unique([productId])
+  @@unique([bundleId])
+  @@index([scope, enabled])
+  @@map("reseller_policies")
+}
+
+/// Explicit right to resell. Granted only from a verified purchase + policy.
+model ResellerEntitlement {
+  id                String                    @id @default(cuid())
+  /// Idempotency key: user + scope + catalog target
+  entitlementKey    String                    @unique
+  userId            String
+  scope             ResellerScope
+  status            ResellerEntitlementStatus @default(ACTIVE)
+  productId         String?
+  bundleId          String?
+  purchaseId        String?
+  /// Approved catalog product IDs this entitlement authorizes for resale
+  coveredProductIds Json
+  policySnapshot    Json?
+  grantedAt         DateTime                  @default(now())
+  revokedAt         DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  bundle   Bundle?   @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  offers   ResellerOffer[]
+
+  @@index([userId, status])
+  @@index([purchaseId])
+  @@map("reseller_entitlements")
+}
+
+model ResellerOffer {
+  id             String              @id @default(cuid())
+  resellerUserId String
+  entitlementId  String
+  slug           String              @unique
+  title          String
+  description    String?
+  priceCents     Int
+  currency       String              @default("USD")
+  status         ResellerOfferStatus @default(DRAFT)
+  brandName      String?
+  brandLogoUrl   String?
+  brandAccent    String?
+  salesCopy      String?
+  ctaText        String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  reseller    User                   @relation(fields: [resellerUserId], references: [id], onDelete: Cascade)
+  entitlement ResellerEntitlement    @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
+  products    ResellerOfferProduct[]
+  sales       ResellerSale[]
+  events      ResellerOfferEvent[]
+  agencyProfiles ResellerAgencyProfile[]
+  inquiries   ResellerInquiry[]
+
+  @@index([resellerUserId, status])
+  @@index([entitlementId])
+  @@map("reseller_offers")
+}
+
+model ResellerOfferProduct {
+  offerId   String
+  productId String
+
+  offer   ResellerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@id([offerId, productId])
+  @@index([productId])
+  @@map("reseller_offer_products")
+}
+
+model ResellerCustomer {
+  id                  String                 @id @default(cuid())
+  resellerUserId      String
+  email               String
+  firstName           String
+  lastName            String
+  company             String?
+  notes               String?
+  status              ResellerCustomerStatus @default(INVITED)
+  userId              String?
+  activationTokenHash String?                @unique
+  activationExpiresAt DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  reseller User          @relation("ResellerOwnedCustomers", fields: [resellerUserId], references: [id], onDelete: Cascade)
+  user     User?         @relation("ResellerEndUser", fields: [userId], references: [id], onDelete: SetNull)
+  sales    ResellerSale[]
+
+  @@unique([resellerUserId, email])
+  @@index([userId])
+  @@map("reseller_customers")
+}
+
+model ResellerSale {
+  id                  String             @id @default(cuid())
+  code                String             @unique
+  offerId             String
+  resellerUserId      String
+  customerId          String
+  /// Snapshot target. Not both required.
+  productId           String?
+  bundleId            String?
+  status              ResellerSaleStatus @default(PENDING)
+  amountCents         Int
+  currency            String             @default("USD")
+  /// PENDING | REQUIRES_PAYMENT | PAID | SIMULATED | RECORDED | FAILED | AMOUNT_MISMATCH
+  paymentStatus       String             @default("PENDING")
+  paymentProvider     String?
+  paymentReference    String?            @unique
+  checkoutReference   String?            @unique
+  paymentNote         String?
+  failureReason       String?
+  refundReference     String?
+  /// Server snapshot of offer, price, currency, and catalog targets
+  snapshot            Json?
+  accessProvisionedAt DateTime?
+  paidAt              DateTime?
+  refundedAt          DateTime?
+  cancelledAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  offer          ResellerOffer            @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  reseller       User                     @relation(fields: [resellerUserId], references: [id], onDelete: Cascade)
+  customer       ResellerCustomer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  product        Product?                 @relation("ResellerSaleProduct", fields: [productId], references: [id], onDelete: SetNull)
+  bundle         Bundle?                  @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  access         ResellerCustomerAccess[]
+  paymentEvents  PaymentEvent[]
+
+  @@index([resellerUserId, createdAt])
+  @@index([offerId])
+  @@index([status])
+  @@index([customerId])
+  @@map("reseller_sales")
+}
+
+/// Links a reseller sale to existing catalog ProductAccess. Does not create agencies.
+model ResellerCustomerAccess {
+  id              String   @id @default(cuid())
+  saleId          String
+  userId          String
+  productId       String
+  productAccessId String?
+  createdAt       DateTime @default(now())
+
+  sale          ResellerSale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productAccess ProductAccess? @relation(fields: [productAccessId], references: [id], onDelete: SetNull)
+
+  @@unique([saleId, productId])
+  @@index([userId, productId])
+  @@map("reseller_customer_access")
+}
+
+/// Customer-facing presentation for a reseller. Separate from resale entitlement.
+model ResellerBranding {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  brandName      String?
+  logoPath       String?
+  faviconPath    String?
+  primaryColor   String?
+  secondaryColor String?
+  supportEmail   String?
+  website        String?
+  supportPhone   String?
+  footerText     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reseller_branding")
+}
+
+enum ResellerOfferEventType {
+  VIEW
+  CHECKOUT_START
+}
+
+/// Recorded offer analytics. Never synthesized.
+model ResellerOfferEvent {
+  id             String                 @id @default(cuid())
+  offerId        String
+  resellerUserId String
+  type           ResellerOfferEventType
+  createdAt      DateTime               @default(now())
+
+  offer ResellerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([resellerUserId, type, createdAt])
+  @@index([offerId, type])
+  @@map("reseller_offer_events")
+}
+
+/// A branded agency the reseller saved. Publishing and WordPress are optional.
+model ResellerAgencyProfile {
+  id               String   @id @default(cuid())
+  userId           String
+  productId        String
+  offerId          String?
+  slug             String   @unique
+  title            String
+  brandName        String?
+  logoPath         String?
+  primaryColor     String?
+  secondaryColor   String?
+  supportEmail     String?
+  website          String?
+  supportPhone     String?
+  footerText       String?
+  wordpressUrl     String?
+  wordpressPageUrl String?
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  offer     ResellerOffer?  @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  inquiries ResellerInquiry[]
+
+  @@index([userId, published])
+  @@index([productId])
+  @@map("reseller_agency_profiles")
+}
+
+/// Lead from an agency sales page. No payment and no access is granted.
+model ResellerInquiry {
+  id             String   @id @default(cuid())
+  resellerUserId String
+  profileId      String?
+  offerId        String?
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  company        String?
+  message        String?
+  createdAt      DateTime @default(now())
+
+  reseller User                   @relation(fields: [resellerUserId], references: [id], onDelete: Cascade)
+  profile  ResellerAgencyProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  offer    ResellerOffer?         @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([resellerUserId, createdAt])
+  @@index([profileId])
+  @@index([offerId])
+  @@map("reseller_inquiries")
+}
+
+/// Lead from AES agency / suite sales pages. No payment — admin follows up by email.
+model SalesInquiry {
+  id        String   @id @default(cuid())
+  productId String?
+  bundleId  String?
+  interest  String?
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  company   String?
+  message   String?
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  bundle  Bundle?  @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([email])
+  @@map("sales_inquiries")
+}
+
+/// In-app notifications for admin and reseller users.
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String
+  title      String
+  body       String?
+  href       String?
+  entityType String?
+  entityId   String?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}

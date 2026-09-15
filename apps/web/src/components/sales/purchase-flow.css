@@ -1,0 +1,380 @@
+/* Phase 5 — unified purchase flow (selector, review, confirmation) */
+
+.purchase-selector {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.purchase-selector-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.purchase-selector-head h2 {
+  margin: 0.35rem 0 0.4rem;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  letter-spacing: -0.03em;
+}
+
+.purchase-selector-head p {
+  margin: 0;
+  max-width: 40rem;
+  color: var(--muted);
+}
+
+.purchase-selector-summary {
+  display: flex;
+  gap: 1rem;
+}
+
+.purchase-selector-summary > div {
+  min-width: 7rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  color: #14201c;
+}
+
+.purchase-selector-summary span {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #5a6b64;
+}
+
+.purchase-selector-summary strong {
+  font-size: 1.25rem;
+  color: #101a18;
+  font-weight: 800;
+}
+
+.purchase-agency-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.purchase-agency-card {
+  text-align: left;
+  border: 1px solid #d7e0db;
+  border-radius: 14px;
+  padding: 0.95rem;
+  background: #fff;
+  color: #14201c;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.purchase-agency-card:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+
+.purchase-agency-card.selected {
+  border-color: var(--accent, #3d9a7a);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #3d9a7a) 40%, transparent);
+}
+
+.purchase-agency-card.owned {
+  opacity: 0.92;
+  background: color-mix(in srgb, var(--accent, #3d9a7a) 6%, #fff);
+}
+
+.purchase-agency-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.purchase-agency-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.purchase-agency-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #14200c;
+}
+.purchase-agency-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex: none;
+  border: 1px solid #dce5e1;
+  background: #0f1a16;
+}
+.purchase-agency-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.purchase-agency-card strong {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  color: #101a18;
+}
+
+.purchase-agency-card small,
+.purchase-agency-card em {
+  display: block;
+  margin-top: 0.25rem;
+  font-style: normal;
+  color: #4d5f58;
+  font-size: 0.8rem;
+}
+
+.purchase-agency-card em {
+  margin-top: 0.55rem;
+  color: #101a18;
+  font-weight: 700;
+}
+
+.purchase-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: #eef3f0;
+  color: #3f524b;
+}
+
+.purchase-badge.selected {
+  background: color-mix(in srgb, var(--accent, #3d9a7a) 18%, #fff);
+  color: #1f6b4f;
+}
+
+.purchase-badge.owned {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.purchase-upsell,
+.purchase-suite-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 1rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+.purchase-upsell {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent, #caff45) 12%, #fff), #fff);
+}
+
+.purchase-suite-card {
+  background: linear-gradient(120deg, #0b1714, #12221b);
+  color: #fff;
+  border-color: #263a31;
+}
+
+.purchase-suite-card p,
+.purchase-suite-card em {
+  color: #c5d0c9;
+  font-style: normal;
+}
+
+.purchase-suite-card h3 {
+  margin: 0 0 0.25rem;
+  color: #fff;
+  font-weight: 800;
+}
+
+.purchase-suite-card em {
+  display: block;
+  margin-top: 0.35rem;
+  color: #e8f0eb;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.purchase-selector-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.purchase-owned-stack {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.purchase-flow-hero {
+  margin-bottom: 1.25rem;
+}
+
+.purchase-flow-hero h1 {
+  margin: 0.35rem 0 0.5rem;
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+  letter-spacing: -0.03em;
+}
+
+.purchase-review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.purchase-review-list li,
+.purchase-review-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.purchase-review-list span,
+.purchase-review-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.purchase-review-side {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.purchase-review-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  font-size: 1.05rem;
+}
+
+.purchase-review-actions {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.purchase-confirm-hero h1 {
+  margin: 0.35rem 0 0.4rem;
+  font-size: clamp(1.9rem, 3.5vw, 2.6rem);
+}
+
+.purchase-confirm-hero .eyebrow.success {
+  color: #059669;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.purchase-confirm-suite {
+  font-weight: 700;
+  color: var(--accent, #3d9a7a);
+}
+
+.purchase-access-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.purchase-access-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.purchase-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.sales-root .purchase-selector {
+  margin-top: 1rem;
+}
+
+/* Light surfaces inside dark purchase section — never inherit hero white text */
+.sales-root .purchase-selector-summary > div,
+.sales-root .purchase-agency-card,
+.sales-root .purchase-upsell {
+  color: #14201c;
+}
+
+.sales-root .purchase-selector-summary strong,
+.sales-root .purchase-agency-card strong,
+.sales-root .purchase-agency-card em {
+  color: #101a18;
+}
+
+.sales-root .purchase-selector-summary span,
+.sales-root .purchase-agency-card small {
+  color: #4d5f58;
+}
+
+/* Bundle / suite cards stay dark — force readable light text */
+.sales-root .purchase-suite-card {
+  background: linear-gradient(120deg, #101c18, #162821);
+  border-color: #33463d;
+  color: #f3f7f4;
+}
+
+.sales-root .purchase-suite-card h3 {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.sales-root .purchase-suite-card p,
+.sales-root .purchase-suite-card em,
+.sales-root .purchase-suite-card .sales-note {
+  color: #c5d0c9 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.sales-root .purchase-suite-card em {
+  color: #e8f0eb !important;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.sales-root .buy.featured:has(.purchase-selector) {
+  background: #0f1c17;
+}
+
+@media (max-width: 720px) {
+  .purchase-selector-actions {
+    justify-content: stretch;
+  }
+  .purchase-selector-actions .btn {
+    width: 100%;
+  }
+}

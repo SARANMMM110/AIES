@@ -1,0 +1,22 @@
+{
+  "name": "@aes/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured for @aes/shared\""
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
