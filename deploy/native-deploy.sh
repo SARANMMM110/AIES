@@ -6,6 +6,28 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Safely load KEY=VALUE from a dotenv file (handles spaces; ignores comments).
+load_dotenv() {
+  local file="$1"
+  local line key val
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" != *=* ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    if [[ "$val" =~ ^\"(.*)\"$ ]]; then
+      val="${BASH_REMATCH[1]}"
+    elif [[ "$val" =~ ^\'(.*)\'$ ]]; then
+      val="${BASH_REMATCH[1]}"
+    fi
+    export "$key=$val"
+  done < "$file"
+}
+
 if [[ ! -f .env ]]; then
   if [[ -f .env.production ]]; then
     cp .env.production .env
@@ -16,11 +38,7 @@ if [[ ! -f .env ]]; then
   fi
 fi
 
-# Load env for build-time NEXT_PUBLIC_* and DATABASE_URL
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+load_dotenv .env
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "DATABASE_URL is empty in .env"
