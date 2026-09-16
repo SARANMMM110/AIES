@@ -1,11 +1,14 @@
 services:
+  # Optional local Postgres. Production uses Supabase via DATABASE_URL.
+  # Start with: docker compose -f docker-compose.prod.yml --profile local-db up -d
   postgres:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     container_name: aes-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aes}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aes}
       POSTGRES_DB: ${POSTGRES_DB:-ai_enterprise_studio}
     volumes:
       - aes_pg_data:/var/lib/postgresql/data
@@ -23,12 +26,14 @@ services:
     env_file:
       - .env.production
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_enterprise_studio}?schema=public
-    depends_on:
-      postgres:
-        condition: service_healthy
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
     working_dir: /app/packages/database
-    command: ["npx", "prisma", "migrate", "deploy"]
+    command:
+      [
+        "sh",
+        "-c",
+        "echo \"migrate host=$$(echo $$DATABASE_URL | sed -E 's#.*@([^:/]+).*#\\1#')\" && /app/node_modules/.bin/prisma migrate deploy --schema=/app/packages/database/prisma/schema.prisma",
+      ]
     restart: "no"
 
   api:
@@ -43,7 +48,7 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: 4000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_enterprise_studio}?schema=public
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
     volumes:
       - aes_uploads:/app/apps/api/data
     depends_on:

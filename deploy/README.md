@@ -24,29 +24,30 @@ ufw allow 443/tcp
 ufw --force enable
 ```
 
-## 3. Production env (fixes POSTGRES_PASSWORD error)
+## 3. Production env (Supabase)
 
-Docker Compose reads **`.env`** for `${VAR}` substitution — `.env.production` alone is not enough.
+Docker Compose reads **`.env`** for `${VAR}` substitution. Use Supabase for the database (no local Postgres container required).
 
 ```bash
 cd /var/www/AIES
-cp .env.production.example .env.production
 nano .env.production
-# set POSTGRES_PASSWORD (same value in DATABASE_URL), JWT_SECRET, SEED_ADMIN_PASSWORD
-
-cp .env.production .env
 ```
 
-Example values (use your own secrets):
+Set:
 
 ```bash
-POSTGRES_PASSWORD=YourStrongDbPasswordHere
-DATABASE_URL=postgresql://aes:YourStrongDbPasswordHere@postgres:5432/ai_enterprise_studio?schema=public
-JWT_SECRET=z_L0kUpnrVLqFKzwFPx4u4v9P0sh-O-onjX8ubHCCS65EjsGgoGv6pMZOxfbNcU2
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.YOUR_REF.supabase.co:5432/postgres?schema=public&sslmode=require
 APP_URL=https://aienterprisestudio.com
 API_URL=https://aienterprisestudio.com
 NEXT_PUBLIC_API_URL=https://aienterprisestudio.com
 CORS_ORIGIN=https://aienterprisestudio.com,https://www.aienterprisestudio.com
+JWT_SECRET=...
+```
+
+Then:
+
+```bash
+cp .env.production .env
 ```
 
 ## 4. First boot (HTTP)
@@ -100,4 +101,11 @@ cd /var/www/AIES
 git pull
 cp .env.production .env   # keep in sync if you edit secrets
 docker compose -f docker-compose.prod.yml up -d --build
+```
+
+To stop the old local Postgres container (if it was started earlier):
+
+```bash
+docker compose -f docker-compose.prod.yml stop postgres
+docker rm -f aes-postgres 2>/dev/null || true
 ```
