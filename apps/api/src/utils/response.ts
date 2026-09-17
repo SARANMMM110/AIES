@@ -1,6 +1,11 @@
 import type { User } from "@aes/database";
 
-export function toPublicUser(user: User) {
+type PublicUserSource = Pick<
+  User,
+  "id" | "email" | "firstName" | "lastName" | "role" | "isActive" | "createdAt"
+>;
+
+export function toPublicUser(user: PublicUserSource) {
   return {
     id: user.id,
     email: user.email,

@@ -123,10 +123,8 @@ authRouter.post("/logout", authenticate, async (req: AuthRequest, res, next) => 
 
 authRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const user = await prisma.user.findUniqueOrThrow({
-      where: { id: req.user!.id },
-    });
-    res.json(ok({ user: toPublicUser(user) }));
+    // authenticate already resolved the active user — avoid a second DB round-trip.
+    res.json(ok({ user: toPublicUser(req.user!) }));
   } catch (err) {
     next(err);
   }

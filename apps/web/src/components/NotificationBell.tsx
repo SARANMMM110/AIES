@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { ApiClientError, apiFetch, getToken, setToken } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 type NotificationRow = {
   id: string;
@@ -20,28 +21,38 @@ type Props = {
 };
 
 export function NotificationBell({ tone = "user" }: Props) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [authOk, setAuthOk] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
+    if (!user || !authOk || !getToken()) return;
     try {
       const data = await apiFetch<{ notifications: NotificationRow[]; unreadCount: number }>(
         "/api/notifications"
       );
       setItems(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
-    } catch {
-      // Ignore polling errors
+    } catch (err) {
+      if (err instanceof ApiClientError && (err.status === 401 || err.status === 403)) {
+        setAuthOk(false);
+        setToken(null);
+      }
     }
-  }, []);
+  }, [user, authOk]);
 
   useEffect(() => {
+    if (!user || !authOk) return;
     void load();
-    const timer = window.setInterval(() => void load(), 30_000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    }, 60_000);
     return () => window.clearInterval(timer);
-  }, [load]);
+  }, [load, user, authOk]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {

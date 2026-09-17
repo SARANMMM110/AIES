@@ -18,6 +18,9 @@ const display = Space_Grotesk({
 export const metadata: Metadata = {
   title: "AI Enterprise Studio",
   description: "Centralized platform for independent AI agency products — Client 5DF",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 const themeInitScript = `

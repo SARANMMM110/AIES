@@ -13,9 +13,8 @@ export const prisma =
         : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Reuse one client across hot reloads and long-lived PM2 workers.
+globalForPrisma.prisma = prisma;
 
 export * from "@prisma/client";
 export default prisma;

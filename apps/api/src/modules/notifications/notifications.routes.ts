@@ -11,28 +11,31 @@ notificationsRouter.use(authenticate);
 notificationsRouter.get("/", async (req: AuthRequest, res, next) => {
   try {
     const unreadOnly = String(req.query.unread || "") === "1";
-    const rows = await prisma.notification.findMany({
-      where: {
-        userId: req.user!.id,
-        ...(unreadOnly ? { readAt: null } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      take: 40,
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        body: true,
-        href: true,
-        entityType: true,
-        entityId: true,
-        readAt: true,
-        createdAt: true,
-      },
-    });
-    const unreadCount = await prisma.notification.count({
-      where: { userId: req.user!.id, readAt: null },
-    });
+    const where = {
+      userId: req.user!.id,
+      ...(unreadOnly ? { readAt: null } : {}),
+    };
+    const [rows, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 40,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          href: true,
+          entityType: true,
+          entityId: true,
+          readAt: true,
+          createdAt: true,
+        },
+      }),
+      prisma.notification.count({
+        where: { userId: req.user!.id, readAt: null },
+      }),
+    ]);
     res.json(ok({ notifications: rows, unreadCount }));
   } catch (err) {
     next(err);

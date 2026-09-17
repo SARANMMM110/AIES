@@ -12,6 +12,7 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   isActive: boolean;
+  createdAt: Date;
 }
 
 export interface AuthRequest extends Request {
@@ -64,29 +65,59 @@ export async function authenticate(
       throw new AppError(401, "Invalid or expired token", "INVALID_TOKEN");
     }
 
+    let user: AuthUser | undefined;
+
     if (payload.sid) {
+      // One round-trip: session + user (Supabase latency dominates when split).
       const session = await prisma.session.findUnique({
-        where: { tokenHash: hashToken(token) },
+        where: { id: payload.sid },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              firstName: true,
+              lastName: true,
+              isActive: true,
+              createdAt: true,
+            },
+          },
+        },
       });
-      if (!session || session.revokedAt || session.expiresAt < new Date()) {
+      if (
+        !session ||
+        session.revokedAt ||
+        session.expiresAt < new Date() ||
+        session.tokenHash !== hashToken(token)
+      ) {
         throw new AppError(401, "Session expired or revoked", "SESSION_INVALID");
       }
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || !user.isActive) {
-      throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
+      if (!session.user.isActive) {
+        throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
+      }
+      user = session.user;
+    } else {
+      const row = await prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+          createdAt: true,
+        },
+      });
+      if (!row || !row.isActive) {
+        throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
+      }
+      user = row;
     }
 
     req.token = token;
-    req.user = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-    };
+    req.user = user;
     next();
   } catch (err) {
     next(err);
@@ -116,29 +147,56 @@ export async function optionalAuthenticate(
 
     if (payload.sid) {
       const session = await prisma.session.findUnique({
-        where: { tokenHash: hashToken(token) },
+        where: { id: payload.sid },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              firstName: true,
+              lastName: true,
+              isActive: true,
+              createdAt: true,
+            },
+          },
+        },
       });
-      if (!session || session.revokedAt || session.expiresAt < new Date()) {
+      if (
+        !session ||
+        session.revokedAt ||
+        session.expiresAt < new Date() ||
+        session.tokenHash !== hashToken(token) ||
+        !session.user.isActive
+      ) {
         next();
         return;
       }
+      req.token = token;
+      req.user = session.user;
+      next();
+      return;
     }
 
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || !user.isActive) {
+    const row = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+    if (!row || !row.isActive) {
       next();
       return;
     }
 
     req.token = token;
-    req.user = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-    };
+    req.user = row;
     next();
   } catch (err) {
     next(err);
