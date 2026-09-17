@@ -172,7 +172,7 @@ export default function EntitlementsPage() {
                 </p>
                 <div className="reseller-actions">
                   <button className="btn btn-sm" type="button" onClick={() => openWordPress(row)}>
-                    Link to WordPress
+                    Link sales page to WordPress
                   </button>
                   {row.wordpressPageUrl ? (
                     <a
@@ -226,10 +226,11 @@ export default function EntitlementsPage() {
                 aria-labelledby="wp-modal-title"
                 onSubmit={(e) => void publishWordPress(e)}
               >
-                <h3 id="wp-modal-title">Publish to WordPress</h3>
+                <h3 id="wp-modal-title">Link sales page to WordPress</h3>
                 <p>
-                  Publish <strong>{wpTarget.title}</strong> to your WordPress site. Use an Application
-                  Password from WordPress → Users → Profile. It is sent once and not stored.
+                  Publish the branded <strong>sales page</strong> for{" "}
+                  <strong>{wpTarget.title}</strong> onto your WordPress site. Use an Application
+                  Password from WordPress → Users → Profile (sent once, not stored).
                 </p>
                 <label>
                   WordPress site link
@@ -266,7 +267,7 @@ export default function EntitlementsPage() {
                     Cancel
                   </button>
                   <button className="btn lime" type="submit" disabled={wpBusy}>
-                    {wpBusy ? "Publishing…" : "Publish"}
+                    {wpBusy ? "Publishing sales page…" : "Publish sales page"}
                   </button>
                 </div>
               </form>

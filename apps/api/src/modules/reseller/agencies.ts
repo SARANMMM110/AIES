@@ -506,25 +506,71 @@ function wordpressErrorMessage(status: number, payload: unknown): string {
   return `WordPress did not publish the page (HTTP ${status}).`;
 }
 
-function wordpressEmbedContent(title: string, publicUrl: string) {
-  const safeTitle = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-  const safeUrl = publicUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  // Full branded HTML + scripts is often blocked by WordPress security plugins.
-  // Embed the live published sales page instead.
-  return `<!-- wp:html -->
-<div style="max-width:1100px;margin:0 auto;padding:12px 0">
-  <p style="margin:0 0 12px;font:600 15px/1.4 system-ui,sans-serif">
-    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeTitle} — open sales page</a>
-  </p>
-  <iframe
-    src="${safeUrl}"
-    title="${safeTitle}"
-    style="width:100%;min-height:92vh;border:0;border-radius:12px;background:#fff"
-    loading="lazy"
-    referrerpolicy="no-referrer-when-downgrade"
-  ></iframe>
-</div>
-<!-- /wp:html -->`;
+/** Convert full AES sales HTML into a WordPress Custom HTML block (real sales page, not an iframe). */
+function salesHtmlForWordPress(fullHtml: string): string {
+  const styles = [...fullHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
+    .map((match) => match[1])
+    .join("\n");
+  const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(fullHtml);
+  let body = bodyMatch?.[1] || fullHtml;
+  // Drop outer chrome that breaks inside a WP theme layout.
+  body = body.replace(/<\/?(html|head|body)[^>]*>/gi, "");
+  const styleTag = styles.trim() ? `<style>\n${styles}\n</style>\n` : "";
+  return `<!-- wp:html -->\n${styleTag}${body}\n<!-- /wp:html -->`;
+}
+
+function wordpressPageSlug(agencySlug: string, productSlug: string) {
+  const raw = (agencySlug || productSlug || "sales-page")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return raw || "sales-page";
+}
+
+async function wordpressRequest(
+  endpoint: URL,
+  auth: string,
+  method: "GET" | "POST" | "PUT",
+  body?: Record<string, unknown>
+) {
+  try {
+    return await fetch(endpoint, {
+      method,
+      redirect: "follow",
+      signal: AbortSignal.timeout(45000),
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "network error";
+    throw new AppError(
+      400,
+      `Could not reach WordPress (${reason}). Check the https site URL and that the REST API is enabled.`,
+      "WORDPRESS_UNREACHABLE"
+    );
+  }
+}
+
+type WpPagePayload = {
+  id?: number;
+  link?: string;
+  message?: string;
+  code?: string;
+  guid?: { rendered?: string };
+};
+
+async function readWpPayload(response: Response): Promise<WpPagePayload | WpPagePayload[] | null> {
+  const rawText = await response.text();
+  try {
+    return rawText ? (JSON.parse(rawText) as WpPagePayload | WpPagePayload[]) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function publishAgencyToWordPress(
@@ -545,7 +591,6 @@ export async function publishAgencyToWordPress(
     );
   }
 
-  // Public page must be live for the WordPress embed.
   if (!row.published) {
     await prisma.resellerAgencyProfile.update({
       where: { id: row.id },
@@ -554,55 +599,38 @@ export async function publishAgencyToWordPress(
     row.published = true;
   }
 
-  const publicUrl = `${env.APP_URL}/a/${row.slug}`;
-  const endpoint = new URL("/wp-json/wp/v2/pages", site.origin);
+  // Build the real branded sales page HTML (same as Download sales page).
+  const downloaded = await agencyDownloadHtml(userId, id, "sales");
+  const content = salesHtmlForWordPress(downloaded.html);
+  const slug = wordpressPageSlug(row.slug, row.product.slug);
+  const pageTitle = `${row.product.name} Sales Page`;
   const auth = Buffer.from(`${username}:${appPassword}`, "utf8").toString("base64");
 
-  let response: Response;
-  try {
-    response = await fetch(endpoint, {
-      method: "POST",
-      redirect: "follow",
-      signal: AbortSignal.timeout(25000),
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        title: row.title,
-        status: "publish",
-        content: wordpressEmbedContent(row.title, publicUrl),
-      }),
-    });
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : "network error";
-    throw new AppError(
-      400,
-      `Could not reach WordPress (${reason}). Check the https site URL and that the REST API is enabled.`,
-      "WORDPRESS_UNREACHABLE"
-    );
-  }
+  // Reuse existing WP page with this slug when possible (avoids random title-based URLs).
+  const listUrl = new URL("/wp-json/wp/v2/pages", site.origin);
+  listUrl.searchParams.set("slug", slug);
+  listUrl.searchParams.set("status", "any");
+  const existingRes = await wordpressRequest(listUrl, auth, "GET");
+  const existingPayload = await readWpPayload(existingRes);
+  const existingPage = Array.isArray(existingPayload) ? existingPayload[0] : null;
 
-  const rawText = await response.text();
-  type WpPagePayload = {
-    id?: number;
-    link?: string;
-    message?: string;
-    code?: string;
-    guid?: { rendered?: string };
+  const pageBody = {
+    title: pageTitle,
+    slug,
+    status: "publish",
+    content,
   };
-  let payload: WpPagePayload | null = null;
-  try {
-    payload = rawText ? (JSON.parse(rawText) as WpPagePayload) : null;
-  } catch {
-    payload = null;
-  }
 
+  const response = existingPage?.id
+    ? await wordpressRequest(new URL(`/wp-json/wp/v2/pages/${existingPage.id}`, site.origin), auth, "PUT", pageBody)
+    : await wordpressRequest(new URL("/wp-json/wp/v2/pages", site.origin), auth, "POST", pageBody);
+
+  const payload = (await readWpPayload(response)) as WpPagePayload | null;
   const pageLink =
     (payload?.link && String(payload.link)) ||
     (payload?.guid?.rendered && String(payload.guid.rendered)) ||
-    (payload?.id ? `${site.origin}/?page_id=${payload.id}` : null);
+    (payload?.id ? `${site.origin}/?page_id=${payload.id}` : null) ||
+    `${site.origin}/${slug}/`;
 
   if (!response.ok || !pageLink) {
     throw new AppError(400, wordpressErrorMessage(response.status, payload), "WORDPRESS_REJECTED", {

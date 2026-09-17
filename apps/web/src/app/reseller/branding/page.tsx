@@ -543,9 +543,10 @@ function BrandingForm() {
                   placeholder="https://yoursite.com"
                 />
               </label>
-              <h2>Publish to WordPress</h2>
+              <h2>Link sales page to WordPress</h2>
               <p className="reseller-note">
-                Optional. Uses a WordPress application password for this request only. It is not stored.
+                Optional. Publishes your branded sales page to WordPress (not an iframe wrapper). Uses
+                an application password for this request only — it is not stored.
               </p>
               <label>
                 WordPress username
@@ -566,7 +567,7 @@ function BrandingForm() {
                 disabled={!saved || busy}
                 onClick={() => void publishWordPress()}
               >
-                Publish to WordPress
+                Publish sales page to WordPress
               </button>
               {saved?.wordpressPageUrl ? <p className="success">WordPress page: {saved.wordpressPageUrl}</p> : null}
             </section>
