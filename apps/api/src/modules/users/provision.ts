@@ -28,6 +28,11 @@ export const provisionCustomerSchema = z.object({
 
 export type ProvisionCustomerInput = z.infer<typeof provisionCustomerSchema>;
 
+function prismaCode(err: unknown): string | null {
+  if (!err || typeof err !== "object") return null;
+  return "code" in err ? String((err as { code?: string }).code ?? "") || null : null;
+}
+
 export async function provisionCustomer(
   input: ProvisionCustomerInput,
   actor?: { id?: string; email?: string }
@@ -38,27 +43,36 @@ export async function provisionCustomer(
     throw new AppError(409, "A user with this email already exists", "EMAIL_TAKEN");
   }
 
+  const uniqueProductIds = [...new Set(input.productIds)];
   const products = await prisma.product.findMany({
     where: {
-      id: { in: input.productIds },
+      id: { in: uniqueProductIds },
       slug: { in: [...APPROVED_PRODUCT_SLUGS] },
       status: { not: "ARCHIVED" },
     },
     select: { id: true, name: true, slug: true },
   });
-  if (!products.length || products.length !== input.productIds.length) {
+  if (!products.length || products.length !== uniqueProductIds.length) {
     throw new AppError(400, "One or more selected agencies are invalid", "INVALID_PRODUCTS");
   }
 
   if (input.inquiryId) {
-    const inquiry = await prisma.salesInquiry.findUnique({ where: { id: input.inquiryId } });
-    if (!inquiry) throw new AppError(404, "Inquiry not found", "NOT_FOUND");
+    try {
+      const inquiry = await prisma.salesInquiry.findUnique({ where: { id: input.inquiryId } });
+      if (!inquiry) throw new AppError(404, "Inquiry not found", "NOT_FOUND");
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      // Missing sales_inquiries table / schema drift — continue without linking inquiry.
+      console.error("[provision] inquiry lookup failed", err);
+    }
   }
 
   const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_SALT_ROUNDS);
 
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({
+  // Avoid interactive $transaction — Supabase pooler often fails it with opaque 500s.
+  let user;
+  try {
+    user = await prisma.user.create({
       data: {
         email,
         passwordHash,
@@ -68,33 +82,57 @@ export async function provisionCustomer(
         isActive: true,
       },
     });
+  } catch (err) {
+    const code = prismaCode(err);
+    if (code === "P2002") {
+      throw new AppError(409, "A user with this email already exists", "EMAIL_TAKEN");
+    }
+    console.error("[provision] user.create failed", err);
+    throw new AppError(
+      500,
+      err instanceof Error ? err.message : "Could not create user",
+      "PROVISION_USER_FAILED"
+    );
+  }
 
-    const grants = [];
+  try {
     for (const product of products) {
-      const grant = await grantDirectProductAccess(tx, {
+      await grantDirectProductAccess(prisma, {
         userId: user.id,
         productId: product.id,
         source: "ADMIN_GRANT",
       });
-      grants.push({ productId: product.id, name: product.name, created: grant.created });
     }
+  } catch (err) {
+    console.error("[provision] access grant failed", err);
+    // Keep the user — admin can grant access from Users → Manage. Surface a clear error.
+    throw new AppError(
+      500,
+      err instanceof Error
+        ? `Account created but agency access failed: ${err.message}`
+        : "Account created but agency access failed",
+      "PROVISION_ACCESS_FAILED",
+      { userId: user.id, email }
+    );
+  }
 
-    if (input.inquiryId) {
-      await tx.salesInquiry.update({
+  if (input.inquiryId) {
+    try {
+      await prisma.salesInquiry.update({
         where: { id: input.inquiryId },
         data: { status: "CONTACTED" },
       });
+    } catch (err) {
+      console.error("[provision] inquiry status update failed", err);
     }
-
-    return { user, grants };
-  });
+  }
 
   await writeAuditLog({
     actorId: actor?.id,
     actorEmail: actor?.email,
     action: "user.provisioned",
     entityType: "User",
-    entityId: result.user.id,
+    entityId: user.id,
     metadata: {
       email,
       productIds: products.map((p) => p.id),
@@ -117,7 +155,7 @@ export async function provisionCustomer(
   }
 
   return {
-    user: toPublicUser(result.user),
+    user: toPublicUser(user),
     agencies: products.map((p) => ({ id: p.id, name: p.name, slug: p.slug })),
     inquiryId: input.inquiryId || null,
   };

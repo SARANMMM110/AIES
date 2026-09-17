@@ -55,7 +55,18 @@ export async function apiFetch<T>(
   const json = (await res.json()) as ApiResult<T>;
   if (!res.ok || !json.success) {
     const err = !json.success ? json.error : { message: "Request failed" };
-    throw new ApiClientError(err.message, res.status, err.code, err.details);
+    const detailReason =
+      err.details &&
+      typeof err.details === "object" &&
+      err.details !== null &&
+      "reason" in err.details
+        ? String((err.details as { reason?: unknown }).reason ?? "")
+        : "";
+    const message =
+      detailReason && err.message === "Internal server error"
+        ? detailReason
+        : err.message;
+    throw new ApiClientError(message, res.status, err.code, err.details);
   }
   return json.data;
 }
