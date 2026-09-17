@@ -6,6 +6,7 @@ import { WIKI_CATEGORIES, wikiArticleCount } from "./content/wiki-catalog";
  * Does not create products, services, or workflows.
  */
 export async function seedAgencyWiki(prisma: PrismaClient) {
+  console.log("  Wiki: loading products + workflows…");
   const products = await prisma.product.findMany({
     select: { id: true, slug: true },
   });
@@ -19,6 +20,7 @@ export async function seedAgencyWiki(prisma: PrismaClient) {
       product: { select: { slug: true } },
     },
   });
+  console.log(`  Wiki: ${WIKI_CATEGORIES.length} categories, ${wikiArticleCount()} articles to upsert`);
 
   const articleIdBySlug = new Map<string, string>();
   const pendingRelations: Array<{
@@ -28,7 +30,9 @@ export async function seedAgencyWiki(prisma: PrismaClient) {
     relatedWorkflowHints?: Array<{ productSlug: string; nameIncludes: string }>;
   }> = [];
 
+  let articleIndex = 0;
   for (const cat of WIKI_CATEGORIES) {
+    console.log(`  Wiki category: ${cat.slug} (${cat.articles.length} articles)`);
     const category = await prisma.wikiCategory.upsert({
       where: { slug: cat.slug },
       update: {
@@ -47,6 +51,7 @@ export async function seedAgencyWiki(prisma: PrismaClient) {
     });
 
     for (const art of cat.articles) {
+      articleIndex += 1;
       const existing = await prisma.wikiArticle.findUnique({
         where: {
           categoryId_slug: { categoryId: category.id, slug: art.slug },
@@ -87,10 +92,17 @@ export async function seedAgencyWiki(prisma: PrismaClient) {
         relatedAgencySlugs: art.relatedAgencySlugs,
         relatedWorkflowHints: art.relatedWorkflowHints,
       });
+
+      if (articleIndex % 25 === 0 || articleIndex === wikiArticleCount()) {
+        console.log(`  Wiki articles upserted: ${articleIndex}/${wikiArticleCount()}`);
+      }
     }
   }
 
+  console.log(`  Wiki: linking relations for ${pendingRelations.length} articles…`);
+  let relIndex = 0;
   for (const rel of pendingRelations) {
+    relIndex += 1;
     const articleId = articleIdBySlug.get(rel.articleSlug);
     if (!articleId) continue;
 
@@ -136,6 +148,10 @@ export async function seedAgencyWiki(prisma: PrismaClient) {
         data: [...workflowIds].slice(0, 5).map((workflowId) => ({ articleId, workflowId })),
         skipDuplicates: true,
       });
+    }
+
+    if (relIndex % 50 === 0 || relIndex === pendingRelations.length) {
+      console.log(`  Wiki relations: ${relIndex}/${pendingRelations.length}`);
     }
   }
 

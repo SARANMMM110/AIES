@@ -290,6 +290,7 @@ async function main() {
   console.log(`  Total workflows seeded: ${workflowTotal}`);
 
   // Archive ANY product outside the fixed 10-tool catalog (preserve rows for FK integrity).
+  console.log("  Catalog cleanup…");
   const archivedExtras = await prisma.product.updateMany({
     where: {
       slug: { notIn: [...APPROVED_PRODUCT_SLUGS] },
@@ -315,10 +316,14 @@ async function main() {
   // Do not recreate the pre-R4 sample workflow. It is not in the canonical 306.
   const sampleLeftover = await prisma.workflowDefinition.findFirst({
     where: { key: "sample-onboarding", product: { slug: "sample-agency-module" } },
-    include: { _count: { select: { progress: true, wikiArticleLinks: true } } },
+    select: { id: true },
   });
   if (sampleLeftover) {
-    if (sampleLeftover._count.progress || sampleLeftover._count.wikiArticleLinks) {
+    const [progressCount, wikiLinkCount] = await Promise.all([
+      prisma.workflowProgress.count({ where: { workflowId: sampleLeftover.id } }),
+      prisma.wikiArticleWorkflow.count({ where: { workflowId: sampleLeftover.id } }),
+    ]);
+    if (progressCount || wikiLinkCount) {
       throw new Error("sample-onboarding has foreign keys; seed will not recreate or delete it");
     }
     await prisma.workflowDefinition.delete({ where: { id: sampleLeftover.id } });
@@ -328,133 +333,10 @@ async function main() {
   if (workflowRows !== 306) {
     throw new Error(`Expected 306 workflow definitions after seed, got ${workflowRows}`);
   }
+  console.log("  Workflow count OK (306)");
 
-  await prisma.sharedResource.upsert({
-    where: { key: "agency-wiki" },
-    update: {
-      title: "AI Enterprise Studio — Agency Wiki",
-      description:
-        "Shared agency operating knowledge for all 10 agency products. Full articles live in the Agency Wiki module.",
-      isPublished: true,
-      content: {
-        status: "READY",
-        version: 3,
-        scope: "shared",
-        module: "/wiki",
-        note: "Structured Wiki articles are seeded into wiki_categories / wiki_articles. This SharedResource remains as the platform index pointer.",
-        sections: [
-          {
-            id: "index",
-            title: "Open the Agency Wiki",
-            items: [
-              "Use /wiki for searchable categories, articles, bookmarks, and progress.",
-              "Wiki is shared across agencies — not a purchasable product.",
-              "Operator Guides remain inside each agency product.",
-            ],
-          },
-        ],
-      },
-    },
-    create: {
-      key: "agency-wiki",
-      title: "AI Enterprise Studio — Agency Wiki",
-      description:
-        "Shared agency operating knowledge for all 10 agency products. Full articles live in the Agency Wiki module.",
-      isPublished: true,
-      content: {
-        status: "READY",
-        version: 3,
-        scope: "shared",
-        module: "/wiki",
-      },
-    },
-  });
-
-  const wikiSeed = await seedAgencyWiki(prisma);
-  console.log(`Agency Wiki seeded: ${wikiSeed.categories} categories, ${wikiSeed.articles} articles`);
-
-  for (const slug of DEMO_USER_PRODUCT_SLUGS) {
-    const product = products.find((p) => p.slug === slug);
-    if (!product) continue;
-    const existing = await prisma.productAccess.findFirst({
-      where: { userId: user.id, productId: product.id, bundleId: null },
-    });
-    if (existing) {
-      await prisma.productAccess.update({
-        where: { id: existing.id },
-        data: { status: "ACTIVE", source: "ADMIN_GRANT" },
-      });
-    } else {
-      await prisma.productAccess.create({
-        data: {
-          userId: user.id,
-          productId: product.id,
-          source: "ADMIN_GRANT",
-          status: "ACTIVE",
-        },
-      });
-    }
-  }
-
-  const keepIds = products
-    .filter((p) => DEMO_USER_PRODUCT_SLUGS.includes(p.slug))
-    .map((p) => p.id);
-  await prisma.productAccess.updateMany({
-    where: { userId: user.id, productId: { notIn: keepIds }, status: "ACTIVE" },
-    data: { status: "REVOKED" },
-  });
-
-  const booking = products.find((p) => p.slug === "booking-flow-agency")!;
-  let client = await prisma.client.findFirst({
-    where: { ownerId: user.id, name: "Demo Dental Clinic" },
-  });
-  if (!client) {
-    client = await prisma.client.create({
-      data: {
-        ownerId: user.id,
-        name: "Demo Dental Clinic",
-        email: "frontdesk@demodental.test",
-        company: "Demo Dental",
-        businessType: "Dental clinic",
-        industry: "Healthcare services",
-        location: "Austin, TX",
-        serviceArea: "Greater Austin",
-        targetCustomers: "Local families needing dental care",
-        mainProblems: "Missed calls and slow enquiry follow-up",
-        goals: "Increase booked appointments from web enquiries",
-      },
-    });
-  }
-
-  let project = await prisma.project.findFirst({
-    where: { ownerId: user.id, name: "Enquiry Recovery Pilot" },
-  });
-  if (!project) {
-    await prisma.project.create({
-      data: {
-        ownerId: user.id,
-        clientId: client.id,
-        productId: booking.id,
-        name: "Enquiry Recovery Pilot",
-        description: "Sample project linked to Booking Flow Agency",
-        status: "ACTIVE",
-      },
-    });
-  } else {
-    await prisma.project.update({
-      where: { id: project.id },
-      data: { productId: booking.id, clientId: client.id },
-    });
-  }
-
-  console.log("Seed complete (Stage 3B):");
-  console.log(`  Admin: ${admin.email}`);
-  console.log(`  User:  ${user.email}`);
-  console.log(`  Products: ${products.length}`);
-  console.log(`  Workflows: ${workflowTotal}`);
-  console.log(`  Demo access: ${DEMO_USER_PRODUCT_SLUGS.join(", ")}`);
-
-  // Complete suite bundle (all 10 agencies) — sales page purchase target
+  // Sales packs first (fast) so /sales works even if wiki seed is interrupted.
+  console.log("  Seeding sales bundles…");
   const suite = await prisma.bundle.upsert({
     where: { slug: "ai-enterprise-studio-complete-suite" },
     update: {
@@ -464,6 +346,9 @@ async function main() {
       status: "ACTIVE",
       priceCents: 199900,
       currency: "USD",
+      shortDescription: "All 10 agencies — 99 services and 306 guided workflows.",
+      icon: "▣",
+      displayOrder: 0,
       metadata: {
         kind: "COMPLETE_SUITE",
         agencyCount: 10,
@@ -478,6 +363,9 @@ async function main() {
       status: "ACTIVE",
       priceCents: 199900,
       currency: "USD",
+      shortDescription: "All 10 agencies — 99 services and 306 guided workflows.",
+      icon: "▣",
+      displayOrder: 0,
       metadata: {
         kind: "COMPLETE_SUITE",
         agencyCount: 10,
@@ -502,7 +390,6 @@ async function main() {
   }
   console.log(`  Suite bundle: ${suite.slug} (${products.length} products)`);
 
-  // Custom packs (Phase 6) — do not alter Complete Suite contents above
   const bySlug = new Map(products.map((p) => [p.slug, p]));
 
   async function upsertPack(input: {
@@ -587,15 +474,132 @@ async function main() {
     ],
   });
 
-  // Keep Complete Suite at the top of display order
-  await prisma.bundle.update({
-    where: { id: suite.id },
-    data: {
-      displayOrder: 0,
-      shortDescription: "All 10 agencies — 99 services and 306 guided workflows.",
-      icon: "▣",
+  console.log("  Seeding Agency Wiki (172 articles — can take several minutes)…");
+  await prisma.sharedResource.upsert({
+    where: { key: "agency-wiki" },
+    update: {
+      title: "AI Enterprise Studio — Agency Wiki",
+      description:
+        "Shared agency operating knowledge for all 10 agency products. Full articles live in the Agency Wiki module.",
+      isPublished: true,
+      content: {
+        status: "READY",
+        version: 3,
+        scope: "shared",
+        module: "/wiki",
+        note: "Structured Wiki articles are seeded into wiki_categories / wiki_articles. This SharedResource remains as the platform index pointer.",
+        sections: [
+          {
+            id: "index",
+            title: "Open the Agency Wiki",
+            items: [
+              "Use /wiki for searchable categories, articles, bookmarks, and progress.",
+              "Wiki is shared across agencies — not a purchasable product.",
+              "Operator Guides remain inside each agency product.",
+            ],
+          },
+        ],
+      },
+    },
+    create: {
+      key: "agency-wiki",
+      title: "AI Enterprise Studio — Agency Wiki",
+      description:
+        "Shared agency operating knowledge for all 10 agency products. Full articles live in the Agency Wiki module.",
+      isPublished: true,
+      content: {
+        status: "READY",
+        version: 3,
+        scope: "shared",
+        module: "/wiki",
+      },
     },
   });
+
+  const wikiSeed = await seedAgencyWiki(prisma);
+  console.log(`Agency Wiki seeded: ${wikiSeed.categories} categories, ${wikiSeed.articles} articles`);
+
+  console.log("  Demo user access + sample project…");
+  for (const slug of DEMO_USER_PRODUCT_SLUGS) {
+    const product = products.find((p) => p.slug === slug);
+    if (!product) continue;
+    const existing = await prisma.productAccess.findFirst({
+      where: { userId: user.id, productId: product.id, bundleId: null },
+    });
+    if (existing) {
+      await prisma.productAccess.update({
+        where: { id: existing.id },
+        data: { status: "ACTIVE", source: "ADMIN_GRANT" },
+      });
+    } else {
+      await prisma.productAccess.create({
+        data: {
+          userId: user.id,
+          productId: product.id,
+          source: "ADMIN_GRANT",
+          status: "ACTIVE",
+        },
+      });
+    }
+  }
+
+  const keepIds = products
+    .filter((p) => DEMO_USER_PRODUCT_SLUGS.includes(p.slug))
+    .map((p) => p.id);
+  await prisma.productAccess.updateMany({
+    where: { userId: user.id, productId: { notIn: keepIds }, status: "ACTIVE" },
+    data: { status: "REVOKED" },
+  });
+
+  const booking = products.find((p) => p.slug === "booking-flow-agency")!;
+  let client = await prisma.client.findFirst({
+    where: { ownerId: user.id, name: "Demo Dental Clinic" },
+  });
+  if (!client) {
+    client = await prisma.client.create({
+      data: {
+        ownerId: user.id,
+        name: "Demo Dental Clinic",
+        email: "frontdesk@demodental.test",
+        company: "Demo Dental",
+        businessType: "Dental clinic",
+        industry: "Healthcare services",
+        location: "Austin, TX",
+        serviceArea: "Greater Austin",
+        targetCustomers: "Local families needing dental care",
+        mainProblems: "Missed calls and slow enquiry follow-up",
+        goals: "Increase booked appointments from web enquiries",
+      },
+    });
+  }
+
+  let project = await prisma.project.findFirst({
+    where: { ownerId: user.id, name: "Enquiry Recovery Pilot" },
+  });
+  if (!project) {
+    await prisma.project.create({
+      data: {
+        ownerId: user.id,
+        clientId: client.id,
+        productId: booking.id,
+        name: "Enquiry Recovery Pilot",
+        description: "Sample project linked to Booking Flow Agency",
+        status: "ACTIVE",
+      },
+    });
+  } else {
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { productId: booking.id, clientId: client.id },
+    });
+  }
+
+  console.log("Seed complete (Stage 3B):");
+  console.log(`  Admin: ${admin.email}`);
+  console.log(`  User:  ${user.email}`);
+  console.log(`  Products: ${products.length}`);
+  console.log(`  Workflows: ${workflowTotal}`);
+  console.log(`  Demo access: ${DEMO_USER_PRODUCT_SLUGS.join(", ")}`);
 
   const bundleCount = await prisma.bundle.count({ where: { status: "ACTIVE" } });
   const wikiCount = await prisma.wikiArticle.count();
