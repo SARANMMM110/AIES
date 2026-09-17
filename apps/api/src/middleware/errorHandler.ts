@@ -39,16 +39,16 @@ export function errorHandler(
   }
 
   console.error("[api:error]", err);
+  const isProd = env.NODE_ENV === "production";
+  const message =
+    err instanceof Error ? err.message : "Internal server error";
   return res.status(500).json({
     success: false,
     error: {
-      message:
-        env.NODE_ENV === "production"
-          ? "Internal server error"
-          : err instanceof Error
-            ? err.message
-            : "Internal server error",
+      message: isProd ? "Internal server error" : message,
       code: "INTERNAL_ERROR",
+      // Safe diagnostic for ops (no stack). Helps VPS debugging without NODE_ENV=development.
+      details: isProd ? { reason: message } : undefined,
     },
   });
 }

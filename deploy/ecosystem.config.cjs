@@ -21,14 +21,16 @@ module.exports = {
       name: "aes-web",
       cwd: "./apps/web",
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3000",
+      args: "start -p 3016",
       instances: 1,
       exec_mode: "fork",
       max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 3016,
         HOSTNAME: "0.0.0.0",
+        // SSR catalog fetches — never go through the public domain
+        API_INTERNAL_URL: "http://127.0.0.1:4000",
       },
     },
   ],

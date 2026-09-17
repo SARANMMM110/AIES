@@ -13,7 +13,18 @@ export const metadata = {
 };
 
 export default async function BundlesIndexPage() {
-  const catalog = await fetchSalesCatalog();
+  let catalog;
+  try {
+    catalog = await fetchSalesCatalog();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load catalog";
+    return (
+      <main style={{ padding: "3rem 1.5rem", maxWidth: 640, margin: "0 auto" }}>
+        <h1>Bundles unavailable</h1>
+        <p>{message}</p>
+      </main>
+    );
+  }
   return (
     <div className="sales-root" style={{ ["--sales-accent"]: "#caff45" } as CSSProperties}>
       <SalesHeader />

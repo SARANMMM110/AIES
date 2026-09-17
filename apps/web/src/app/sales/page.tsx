@@ -18,13 +18,24 @@ export const metadata: Metadata = {
 };
 
 export default async function SalesCatalogPage() {
-  const catalog = await fetchSalesCatalog();
-  return (
-    <SalesCatalogView
-      agencies={catalog.agencies}
-      bundles={catalog.bundles}
-      suite={catalog.suite}
-      totals={catalog.totals}
-    />
-  );
+  try {
+    const catalog = await fetchSalesCatalog();
+    return (
+      <SalesCatalogView
+        agencies={catalog.agencies}
+        bundles={catalog.bundles}
+        suite={catalog.suite}
+        totals={catalog.totals}
+      />
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load catalog";
+    return (
+      <main style={{ padding: "3rem 1.5rem", maxWidth: 640, margin: "0 auto" }}>
+        <h1>Sales catalog unavailable</h1>
+        <p>{message}</p>
+        <p>Check that the API is running on port 4000 and DATABASE_URL is set.</p>
+      </main>
+    );
+  }
 }

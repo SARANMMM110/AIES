@@ -66,6 +66,14 @@ export type CatalogPayload = {
 type ApiEnvelope<T> = { success: true; data: T } | { success: false; error: { message: string } };
 
 export function getApiBase(): string {
+  // Server-side: talk to the API on loopback (avoids nginx/hairpin/SSL issues).
+  if (typeof window === "undefined") {
+    return (
+      process.env.API_INTERNAL_URL ||
+      process.env.API_URL ||
+      "http://127.0.0.1:4000"
+    );
+  }
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 }
 
@@ -75,7 +83,15 @@ export async function fetchSalesCatalog(init?: RequestInit): Promise<CatalogPayl
     headers: { Accept: "application/json", ...(init?.headers || {}) },
     cache: "no-store",
   });
-  const json = (await res.json()) as ApiEnvelope<CatalogPayload>;
+  const text = await res.text();
+  let json: ApiEnvelope<CatalogPayload>;
+  try {
+    json = JSON.parse(text) as ApiEnvelope<CatalogPayload>;
+  } catch {
+    throw new Error(
+      `Catalog API returned non-JSON (${res.status}) from ${getApiBase()}/api/catalog`
+    );
+  }
   if (!res.ok || !json.success) {
     throw new Error(!json.success ? json.error.message : "Failed to load catalog");
   }
