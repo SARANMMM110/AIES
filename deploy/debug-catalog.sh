@@ -7,9 +7,9 @@ echo "=== .env DATABASE host ==="
 grep -E '^(DATABASE_URL|DIRECT_URL)=' .env | sed -E 's#(://[^:]+:)[^@]+#\1***#' || true
 
 echo ""
-echo "=== Prisma product query ==="
+echo "=== Prisma product/bundle query ==="
 cd packages/database
-node ./run-with-env.cjs node -e '
+node ./run-with-env.cjs node <<'NODE'
 const { PrismaClient } = require("@prisma/client");
 const p = new PrismaClient();
 (async () => {
@@ -39,4 +39,4 @@ const p = new PrismaClient();
     await p.$disconnect();
   }
 })();
-'
+NODE
