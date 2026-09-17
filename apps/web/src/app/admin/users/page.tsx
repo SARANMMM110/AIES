@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
+import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch } from "@/lib/api";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -22,13 +23,15 @@ type CustomerRow = {
 
 export default function AdminUsersPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pager = useClientPagination(customers);
 
   useEffect(() => {
     void apiFetch<{ customers: CustomerRow[] }>("/api/users/customers")
       .then((data) => setCustomers(data.customers || []))
-      .catch((err: Error) => setError(err.message));
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -46,7 +49,9 @@ export default function AdminUsersPage() {
         {error ? <p className="error">{error}</p> : null}
 
         <div className="panel">
-          {customers.length === 0 ? (
+          {loading ? (
+            <ToolLoadingPulse label="Loading users" fullPage={false} />
+          ) : customers.length === 0 ? (
             <EmptyState
               title="No customers yet"
               description="Create an account from an inquiry, or grant agency access, to see customers here."

@@ -255,8 +255,10 @@ wikiRouter.get("/admin/articles", requireAdmin, async (req: AuthRequest, res, ne
         : undefined;
     const categoryId =
       typeof req.query.categoryId === "string" ? req.query.categoryId : undefined;
-    const articles = await adminListAll({ q, status, categoryId });
-    const categories = await listCategories(true);
+    const [articles, categories] = await Promise.all([
+      adminListAll({ q, status, categoryId }),
+      listCategories(true),
+    ]);
     res.json(ok({ articles, categories }));
   } catch (err) {
     next(err);

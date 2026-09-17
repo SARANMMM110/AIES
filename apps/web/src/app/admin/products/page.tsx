@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
+import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -22,6 +23,7 @@ interface ProductRow {
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
@@ -30,23 +32,30 @@ export default function AdminProductsPage() {
   const pager = useClientPagination(products);
 
   async function load() {
-    const data = await apiFetch<{ products: ProductRow[] }>("/api/products");
-    setProducts(data.products);
-    const next: typeof drafts = {};
-    for (const p of data.products) {
-      next[p.id] = {
-        price: p.priceCents == null ? "" : String(p.priceCents / 100),
-        currency: p.currency || "USD",
-        status: p.status,
-      };
+    setLoading(true);
+    try {
+      const data = await apiFetch<{ products: ProductRow[] }>("/api/products");
+      setProducts(data.products);
+      const next: typeof drafts = {};
+      for (const p of data.products) {
+        next[p.id] = {
+          price: p.priceCents == null ? "" : String(p.priceCents / 100),
+          currency: p.currency || "USD",
+          status: p.status,
+        };
+      }
+      setDrafts(next);
+      setError(null);
+    } finally {
+      setLoading(false);
     }
-    setDrafts(next);
   }
 
   useEffect(() => {
-    void load().catch((err) =>
-      setError(err instanceof Error ? err.message : "Failed to load products")
-    );
+    void load().catch((err) => {
+      setError(err instanceof Error ? err.message : "Failed to load products");
+      setLoading(false);
+    });
   }, []);
 
   async function save(product: ProductRow) {
@@ -85,7 +94,9 @@ export default function AdminProductsPage() {
         />
         {error ? <p className="error">{error}</p> : null}
         <div className="panel">
-          {products.length === 0 ? (
+          {loading ? (
+            <ToolLoadingPulse label="Loading products" fullPage={false} />
+          ) : products.length === 0 ? (
             <EmptyState title="No products yet." description="Seed or create a product to begin." />
           ) : (
             <>
@@ -122,25 +133,18 @@ export default function AdminProductsPage() {
                                 [product.id]: { ...draft, price: e.target.value },
                               }))
                             }
-                            placeholder="299"
-                            aria-label={`${product.name} price`}
                           />
                         </td>
                         <td>
                           <input
-                            style={{ width: 52 }}
-                            maxLength={3}
+                            style={{ width: 64 }}
                             value={draft.currency}
                             onChange={(e) =>
                               setDrafts((prev) => ({
                                 ...prev,
-                                [product.id]: {
-                                  ...draft,
-                                  currency: e.target.value.toUpperCase(),
-                                },
+                                [product.id]: { ...draft, currency: e.target.value },
                               }))
                             }
-                            aria-label={`${product.name} currency`}
                           />
                         </td>
                         <td>
@@ -152,11 +156,10 @@ export default function AdminProductsPage() {
                                 [product.id]: { ...draft, status: e.target.value },
                               }))
                             }
-                            aria-label={`${product.name} status`}
                           >
-                            <option value="PUBLISHED">Published</option>
-                            <option value="DRAFT">Draft</option>
-                            <option value="ARCHIVED">Archived</option>
+                            <option value="DRAFT">DRAFT</option>
+                            <option value="PUBLISHED">PUBLISHED</option>
+                            <option value="ARCHIVED">ARCHIVED</option>
                           </select>
                         </td>
                         <td>{product.workflowCount ?? 0}</td>

@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
+import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -26,6 +27,7 @@ type Category = { id: string; name: string; slug: string };
 export default function AdminWikiPage() {
   const [articles, setArticles] = useState<ArticleRow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [appliedKey, setAppliedKey] = useState("::");
@@ -34,21 +36,28 @@ export default function AdminWikiPage() {
   const pager = useClientPagination(articles, { resetKey: appliedKey });
 
   async function load() {
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    if (status) params.set("status", status);
-    const data = await apiFetch<{ articles: ArticleRow[]; categories: Category[] }>(
-      `/api/wiki/admin/articles?${params}`
-    );
-    setArticles(data.articles);
-    setCategories(data.categories);
-    setAppliedKey(`${q.trim()}::${status}`);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (q.trim()) params.set("q", q.trim());
+      if (status) params.set("status", status);
+      const data = await apiFetch<{ articles: ArticleRow[]; categories: Category[] }>(
+        `/api/wiki/admin/articles?${params}`
+      );
+      setArticles(data.articles);
+      setCategories(data.categories);
+      setAppliedKey(`${q.trim()}::${status}`);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    void load().catch((err) =>
-      setError(err instanceof Error ? err.message : "Failed to load wiki admin")
-    );
+    void load().catch((err) => {
+      setError(err instanceof Error ? err.message : "Failed to load wiki admin");
+      setLoading(false);
+    });
   }, []);
 
   async function setArticleStatus(id: string, action: "publish" | "unpublish" | "archive") {
@@ -93,12 +102,18 @@ export default function AdminWikiPage() {
             </Link>
           </div>
           <p className="muted" style={{ margin: 0 }}>
-            {categories.length} categories · {articles.length} articles shown
+            {loading
+              ? "Loading…"
+              : `${categories.length} categories · ${articles.length} articles shown`}
           </p>
           {error ? <p style={{ color: "var(--danger)", margin: 0 }}>{error}</p> : null}
         </div>
 
-        {articles.length === 0 ? (
+        {loading ? (
+          <div className="panel">
+            <ToolLoadingPulse label="Loading Agency Wiki" fullPage={false} />
+          </div>
+        ) : articles.length === 0 ? (
           <div className="panel">
             <EmptyState title="No wiki articles" description="Create an article or adjust filters." />
           </div>

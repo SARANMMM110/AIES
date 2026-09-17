@@ -215,7 +215,25 @@ productsRouter.get("/", authenticate, async (req: AuthRequest, res, next) => {
           status: { not: "ARCHIVED" },
         },
         orderBy: { name: "asc" },
-        include: productIncludeCounts,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          shortDescription: true,
+          tagline: true,
+          status: true,
+          priceCents: true,
+          currency: true,
+          thumbnailUrl: true,
+          icon: true,
+          _count: {
+            select: {
+              resources: true,
+              workflows: true,
+            },
+          },
+        },
       });
       return res.json(ok({ products: products.map(mapProductCard) }));
     }

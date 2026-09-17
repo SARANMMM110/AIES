@@ -682,7 +682,13 @@ export async function adminListAll(opts?: { q?: string; status?: WikiStatus; cat
         : {}),
     },
     orderBy: [{ category: { displayOrder: "asc" } }, { displayOrder: "asc" }, { title: "asc" }],
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      status: true,
+      displayOrder: true,
+      updatedAt: true,
       category: { select: { id: true, name: true, slug: true } },
       _count: {
         select: {

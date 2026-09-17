@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/ProductCard";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
+import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import { formatMoney } from "@/lib/purchase";
 import { useClientPagination } from "@/hooks/useClientPagination";
@@ -24,19 +25,27 @@ type BundleRow = {
 
 export default function AdminBundlesPage() {
   const [bundles, setBundles] = useState<BundleRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const pager = useClientPagination(bundles);
 
   async function load() {
-    const data = await apiFetch<{ bundles: BundleRow[] }>("/api/bundles");
-    setBundles(data.bundles);
+    setLoading(true);
+    try {
+      const data = await apiFetch<{ bundles: BundleRow[] }>("/api/bundles");
+      setBundles(data.bundles);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    void load().catch((err) =>
-      setError(err instanceof Error ? err.message : "Failed to load bundles")
-    );
+    void load().catch((err) => {
+      setError(err instanceof Error ? err.message : "Failed to load bundles");
+      setLoading(false);
+    });
   }, []);
 
   async function publish(id: string, on: boolean) {
@@ -92,7 +101,9 @@ export default function AdminBundlesPage() {
         />
         {error ? <p className="error">{error}</p> : null}
         <div className="panel">
-          {bundles.length === 0 ? (
+          {loading ? (
+            <ToolLoadingPulse label="Loading bundles" fullPage={false} />
+          ) : bundles.length === 0 ? (
             <EmptyState title="No bundles yet." description="Create a pack from approved agencies." />
           ) : (
             <>

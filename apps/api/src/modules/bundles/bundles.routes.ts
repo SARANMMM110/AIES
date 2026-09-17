@@ -113,12 +113,34 @@ const updateBundleSchema = createBundleSchema.partial().extend({
 bundlesRouter.get("/", authenticate, async (req, res, next) => {
   try {
     const isAdmin = (req as AuthRequest).user?.role === "ADMIN";
+    // List view only needs counts — skip nested product payloads (slow over pooler).
     const bundles = await prisma.bundle.findMany({
       where: isAdmin ? undefined : { status: "ACTIVE" },
-      include: bundleInclude,
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+      include: { _count: { select: { items: true } } },
     });
-    res.json(ok({ bundles: bundles.map(serializeBundle) }));
+    res.json(
+      ok({
+        bundles: bundles.map((bundle) => ({
+          id: bundle.id,
+          name: bundle.name,
+          slug: bundle.slug,
+          description: bundle.description,
+          shortDescription: bundle.shortDescription,
+          status: bundle.status,
+          priceCents: bundle.priceCents,
+          currency: bundle.currency,
+          thumbnailUrl: bundle.thumbnailUrl,
+          icon: bundle.icon,
+          displayOrder: bundle.displayOrder,
+          metadata: bundle.metadata,
+          createdAt: bundle.createdAt,
+          updatedAt: bundle.updatedAt,
+          productCount: bundle._count.items,
+          published: bundle.status === "ACTIVE",
+        })),
+      })
+    );
   } catch (err) {
     next(err);
   }

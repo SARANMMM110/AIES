@@ -112,6 +112,15 @@ curl -s http://127.0.0.1:4000/api/catalog | head -c 400
 # bundles array should include ai-enterprise-studio-complete-suite
 ```
 
+### Notifications 500 / missing tables
+
+```bash
+cd /var/www/AIES
+pnpm db:migrate
+# or: psql "$DATABASE_URL" -f deploy/repair-schema-drift.sql
+pm2 restart aes-api
+```
+
 ## Useful PM2
 
 ```bash
