@@ -232,8 +232,25 @@
   background: color-mix(in srgb, var(--lime) 14%, var(--bg));
 }
 
-.contact-agency.is-owned:not(.is-on) {
-  opacity: 0.88;
+.contact-agency.is-owned {
+  opacity: 0.72;
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--bg) 88%, var(--border));
+}
+
+.contact-agency.is-owned:hover {
+  border-color: var(--border);
+  transform: none;
+}
+
+.contact-agency.is-owned .contact-agency-check {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent) 35%, var(--border));
+  color: var(--bg);
+}
+
+.contact-agency.is-owned .contact-agency-copy em {
+  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
 }
 
 .contact-agency-check {
@@ -268,10 +285,6 @@
   font-style: normal;
   font-size: 0.8rem;
   color: var(--muted);
-}
-
-.contact-agency.is-owned .contact-agency-copy em {
-  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
 }
 
 .contact-actions {

@@ -51,9 +51,13 @@ function ContactPurchaseInner() {
       .then((data) => {
         const list = data.products || [];
         setAgencies(list);
-        if (focus && list.some((a) => a.slug === focus)) {
-          setSelected([focus]);
-        }
+        setSelected((prev) => {
+          const unlockedOnly = prev.filter((slug) => list.some((a) => a.slug === slug && !a.owned));
+          if (focus && list.some((a) => a.slug === focus && !a.owned)) {
+            return unlockedOnly.includes(focus) ? unlockedOnly : [...unlockedOnly, focus];
+          }
+          return unlockedOnly;
+        });
       })
       .catch((err: Error) => {
         setError(err.message);
@@ -64,13 +68,15 @@ function ContactPurchaseInner() {
   }, [focus]);
 
   const selectedAgencies = useMemo(
-    () => agencies.filter((a) => selected.includes(a.slug)),
+    () => agencies.filter((a) => selected.includes(a.slug) && !a.owned),
     [agencies, selected]
   );
 
   const lockedCount = useMemo(() => agencies.filter((a) => !a.owned).length, [agencies]);
 
   function toggleAgency(slug: string) {
+    const agency = agencies.find((a) => a.slug === slug);
+    if (agency?.owned) return;
     setSelected((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
     setError(null);
   }
@@ -244,12 +250,14 @@ function ContactPurchaseInner() {
                     <button
                       key={agency.slug}
                       type="button"
-                      className={`contact-agency${active ? " is-on" : ""}${owned ? " is-owned" : ""}`}
+                      className={`contact-agency${!owned && active ? " is-on" : ""}${owned ? " is-owned" : ""}`}
                       onClick={() => toggleAgency(agency.slug)}
-                      aria-pressed={active}
+                      aria-pressed={owned ? undefined : active}
+                      disabled={owned}
+                      title={owned ? "Already unlocked — cannot select" : undefined}
                     >
                       <span className="contact-agency-check" aria-hidden>
-                        {active ? "✓" : ""}
+                        {owned ? "✓" : active ? "✓" : ""}
                       </span>
                       <span className="contact-agency-copy">
                         <strong>{agency.name}</strong>
