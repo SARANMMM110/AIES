@@ -11,13 +11,13 @@ export function normalizeDatabaseUrl(raw: string): string {
   const params = new URLSearchParams(qIndex >= 0 ? raw.slice(qIndex + 1) : "");
 
   const existingLimit = Number(params.get("connection_limit") || "0");
-  // Session pooler + Node API: allow concurrent auth + page queries.
-  const limit = Number.isFinite(existingLimit) && existingLimit >= 5 ? existingLimit : 10;
+  // One API process serving parallel page loads — keep headroom.
+  const limit = Number.isFinite(existingLimit) && existingLimit >= 10 ? existingLimit : 15;
   params.set("connection_limit", String(limit));
 
   const existingTimeout = Number(params.get("pool_timeout") || "0");
   const timeout =
-    Number.isFinite(existingTimeout) && existingTimeout >= 20 ? existingTimeout : 30;
+    Number.isFinite(existingTimeout) && existingTimeout >= 30 ? existingTimeout : 60;
   params.set("pool_timeout", String(timeout));
 
   if (!params.has("sslmode") && /supabase\.com|pooler/i.test(raw)) {

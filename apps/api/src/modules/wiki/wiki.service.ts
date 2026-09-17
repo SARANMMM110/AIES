@@ -30,8 +30,14 @@ const articleListSelect = {
   },
 } satisfies Prisma.WikiArticleSelect;
 
+const wikiAccessMemo = new Map<string, { at: number; ok: boolean }>();
+const WIKI_ACCESS_MEMO_MS = 60_000;
+
 async function userMayReadWiki(userId: string, role: string): Promise<boolean> {
   if (role === "ADMIN") return true;
+  const hit = wikiAccessMemo.get(userId);
+  if (hit && Date.now() - hit.at < WIKI_ACCESS_MEMO_MS) return hit.ok;
+
   const access = await prisma.productAccess.findFirst({
     where: {
       userId,
@@ -39,8 +45,15 @@ async function userMayReadWiki(userId: string, role: string): Promise<boolean> {
       OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
       product: { status: "PUBLISHED" },
     },
+    select: { id: true },
   });
-  return Boolean(access);
+  const ok = Boolean(access);
+  wikiAccessMemo.set(userId, { at: Date.now(), ok });
+  if (wikiAccessMemo.size > 500) {
+    const oldest = wikiAccessMemo.keys().next().value;
+    if (oldest) wikiAccessMemo.delete(oldest);
+  }
+  return ok;
 }
 
 export async function assertWikiReader(userId: string, role: string) {

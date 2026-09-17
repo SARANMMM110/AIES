@@ -80,17 +80,23 @@ function WikiHomeInner() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
 
-  async function loadBase() {
-    const [cats, prog, hist, marks] = await Promise.all([
-      apiFetch<{ categories: Category[] }>("/api/wiki/categories"),
-      apiFetch<{ progress: Progress }>("/api/wiki/progress"),
-      apiFetch<{ history: HistoryRow[] }>("/api/wiki/history"),
-      apiFetch<{ bookmarks: Array<{ article: ArticleCard }> }>("/api/wiki/bookmarks"),
-    ]);
-    setCategories(cats.categories);
-    setProgress(prog.progress);
-    setHistory(hist.history);
-    setBookmarks(marks.bookmarks);
+  async function loadHome(category?: string, query?: string) {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (query) params.set("q", query);
+    params.set("pageSize", "60");
+    const data = await apiFetch<{
+      categories: Category[];
+      progress: Progress;
+      history: HistoryRow[];
+      bookmarks: Array<{ article: ArticleCard }>;
+      articles: ArticleCard[];
+    }>(`/api/wiki/home?${params}`);
+    setCategories(data.categories);
+    setProgress(data.progress);
+    setHistory(data.history);
+    setBookmarks(data.bookmarks);
+    setArticles(data.articles);
   }
 
   async function loadArticles(category?: string, query?: string) {
@@ -106,8 +112,7 @@ function WikiHomeInner() {
     void (async () => {
       setLoading(true);
       try {
-        await loadBase();
-        await loadArticles(activeCat || undefined);
+        await loadHome(activeCat || undefined);
       } catch (err) {
         setError(err instanceof ApiClientError ? err.message : "Failed to load Agency Wiki");
       } finally {

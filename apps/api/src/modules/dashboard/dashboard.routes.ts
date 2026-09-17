@@ -18,29 +18,30 @@ dashboardRouter.get("/summary", async (req: AuthRequest, res, next) => {
     const userId = req.user!.id;
     const isAdmin = req.user!.role === "ADMIN";
 
-    const accessRows = await loadEntitledProductAccess(userId);
-
-    const suiteAccess = await prisma.bundleAccess.findFirst({
-      where: {
-        userId,
-        status: "ACTIVE",
-        bundle: { slug: "ai-enterprise-studio-complete-suite" },
-      },
-    });
-
-    const recentPurchases = await prisma.purchase.findMany({
-      where: { userId },
-      include: {
-        items: {
-          include: {
-            product: { select: { id: true, name: true, slug: true } },
-            bundle: { select: { id: true, name: true, slug: true } },
+    const [accessRows, suiteAccess, recentPurchases] = await Promise.all([
+      loadEntitledProductAccess(userId),
+      prisma.bundleAccess.findFirst({
+        where: {
+          userId,
+          status: "ACTIVE",
+          bundle: { slug: "ai-enterprise-studio-complete-suite" },
+        },
+        select: { id: true },
+      }),
+      prisma.purchase.findMany({
+        where: { userId },
+        include: {
+          items: {
+            include: {
+              product: { select: { id: true, name: true, slug: true } },
+              bundle: { select: { id: true, name: true, slug: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+    ]);
 
     function accessLabel(row: (typeof accessRows)[number]): string {
       if (suiteAccess || row.bundle?.slug === "ai-enterprise-studio-complete-suite") {
@@ -55,42 +56,43 @@ dashboardRouter.get("/summary", async (req: AuthRequest, res, next) => {
 
     const entitledIds = accessRows.map((r) => r.productId);
 
-    const recentProjects = await prisma.project.findMany({
-      where: {
-        ownerId: userId,
-        ...(entitledIds.length
-          ? { OR: [{ productId: null }, { productId: { in: entitledIds } }] }
-          : { productId: null }),
-      },
-      include: {
-        client: { select: { id: true, name: true } },
-        product: { select: { id: true, name: true, slug: true, icon: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-    });
-
-    const recentActivity = await prisma.workflowProgress.findMany({
-      where: {
-        project: {
+    const [recentProjects, recentActivity] = await Promise.all([
+      prisma.project.findMany({
+        where: {
           ownerId: userId,
           ...(entitledIds.length
             ? { OR: [{ productId: null }, { productId: { in: entitledIds } }] }
-            : {}),
+            : { productId: null }),
         },
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-            product: { select: { id: true, name: true, slug: true } },
+        include: {
+          client: { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, slug: true, icon: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+      }),
+      prisma.workflowProgress.findMany({
+        where: {
+          project: {
+            ownerId: userId,
+            ...(entitledIds.length
+              ? { OR: [{ productId: null }, { productId: { in: entitledIds } }] }
+              : {}),
           },
         },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 8,
-    });
+        include: {
+          project: {
+            select: {
+              id: true,
+              name: true,
+              product: { select: { id: true, name: true, slug: true } },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 8,
+      }),
+    ]);
 
     const productList = accessRows.map((row) => row.product);
 
@@ -102,6 +104,7 @@ dashboardRouter.get("/summary", async (req: AuthRequest, res, next) => {
 
     const recentlyUsed = productList.filter((p) => recentProductIds.includes(p.id));
 
+    res.setHeader("Cache-Control", "private, max-age=15");
     res.json(
       ok({
         user: {

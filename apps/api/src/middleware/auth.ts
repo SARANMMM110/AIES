@@ -27,9 +27,9 @@ export interface JwtPayload {
   sid?: string;
 }
 
-/** Short-lived memo so rapid UI clicks don't each pay a Supabase round-trip. */
+/** Memo so rapid UI clicks don't each pay a Supabase round-trip. */
 const authMemo = new Map<string, { at: number; user: AuthUser }>();
-const AUTH_MEMO_MS = 25_000;
+const AUTH_MEMO_MS = 90_000;
 
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");

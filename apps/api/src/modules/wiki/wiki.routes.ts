@@ -66,6 +66,42 @@ wikiRouter.get("/categories", async (req: AuthRequest, res, next) => {
   }
 });
 
+/** One round-trip for Agency Wiki home (avoids 4× auth + 4× access checks). */
+wikiRouter.get("/home", async (req: AuthRequest, res, next) => {
+  try {
+    await assertWikiReader(req.user!.id, req.user!.role);
+    const category =
+      typeof req.query.category === "string" ? req.query.category : undefined;
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const pageSize = Math.min(
+      60,
+      Math.max(1, Number(req.query.pageSize) || 60)
+    );
+
+    const [categories, progress, history, bookmarks, articlePage] = await Promise.all([
+      listCategories(false),
+      getProgress(req.user!.id),
+      listHistory(req.user!.id, 12),
+      listBookmarks(req.user!.id),
+      listArticles({ categorySlug: category, q, page: 1, pageSize }),
+    ]);
+
+    res.setHeader("Cache-Control", "private, max-age=20");
+    res.json(
+      ok({
+        categories,
+        progress,
+        history,
+        bookmarks,
+        articles: articlePage.articles,
+        total: articlePage.total,
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 wikiRouter.get(
   "/articles",
   validate(
