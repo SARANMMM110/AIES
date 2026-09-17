@@ -35,19 +35,7 @@ adminRouter.get("/dashboard", async (_req, res, next) => {
       },
     };
 
-    const [
-      customersWithAccess,
-      publishedProducts,
-      draftProducts,
-      productsCount,
-      bundlesCount,
-      accessCount,
-      newInquiries,
-      totalInquiries,
-      resellerLeads,
-      recentCustomers,
-      recentProducts,
-    ] = await Promise.all([
+    const settled = await Promise.allSettled([
       prisma.productAccess
         .findMany({
           where: {
@@ -120,6 +108,33 @@ adminRouter.get("/dashboard", async (_req, res, next) => {
       }),
     ]);
 
+    const failed = settled
+      .map((r, i) => (r.status === "rejected" ? { i, reason: String(r.reason) } : null))
+      .filter(Boolean);
+    if (failed.length) {
+      console.error("[admin:dashboard] partial query failures", failed);
+    }
+
+    // If everything failed, surface the first error
+    if (settled.every((r) => r.status === "rejected")) {
+      throw (settled[0] as PromiseRejectedResult).reason;
+    }
+
+    const val = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
+      r.status === "fulfilled" ? r.value : fallback;
+
+    const customersWithAccess = val(settled[0], 0);
+    const publishedProducts = val(settled[1], 0);
+    const draftProducts = val(settled[2], 0);
+    const productsCount = val(settled[3], 0);
+    const bundlesCount = val(settled[4], 0);
+    const accessCount = val(settled[5], 0);
+    const newInquiries = val(settled[6], 0);
+    const totalInquiries = val(settled[7], 0);
+    const resellerLeads = val(settled[8], 0);
+    const recentUsersSafe = settled[9].status === "fulfilled" ? settled[9].value : [];
+    const recentProductsSafe = settled[10].status === "fulfilled" ? settled[10].value : [];
+
     res.json(
       ok({
         stats: {
@@ -133,7 +148,7 @@ adminRouter.get("/dashboard", async (_req, res, next) => {
           totalInquiries,
           resellerLeads,
         },
-        recentUsers: recentCustomers.map((u) => ({
+        recentUsers: recentUsersSafe.map((u) => ({
           id: u.id,
           email: u.email,
           firstName: u.firstName,
@@ -142,7 +157,7 @@ adminRouter.get("/dashboard", async (_req, res, next) => {
           isActive: u.isActive,
           agencies: u.productAccess.map((a) => a.product.name),
         })),
-        recentProducts,
+        recentProducts: recentProductsSafe,
         navigation: [
           { href: "/admin", label: "Overview" },
           { href: "/admin/products", label: "Products" },
@@ -162,6 +177,9 @@ adminRouter.get("/dashboard", async (_req, res, next) => {
           manageInquiries: true,
         },
         note: "Customers are people with unlocked agency access. Create accounts from Inquiries.",
+        ...(failed.length
+          ? { warnings: failed.map((f) => (f as { reason: string }).reason).slice(0, 3) }
+          : {}),
       })
     );
   } catch (err) {
@@ -174,6 +192,67 @@ adminRouter.get("/health", async (_req, res) => {
     ok({
       role: "ADMIN",
       message: "Admin access confirmed",
+    })
+  );
+});
+
+/** Probe Prisma models used by admin/sales routes — returns per-model ok/error. */
+adminRouter.get("/schema-check", async (_req, res) => {
+  const checks: Record<string, { ok: boolean; detail?: string; count?: number }> = {};
+  const run = async (name: string, fn: () => Promise<number>) => {
+    try {
+      const count = await fn();
+      checks[name] = { ok: true, count };
+    } catch (e) {
+      checks[name] = {
+        ok: false,
+        detail: e instanceof Error ? e.message : String(e),
+      };
+    }
+  };
+
+  await run("user", () => prisma.user.count());
+  await run("product", () => prisma.product.count());
+  await run("bundle", () => prisma.bundle.count());
+  await run("productAccess", () => prisma.productAccess.count());
+  await run("salesInquiry", () => prisma.salesInquiry.count());
+  await run("resellerInquiry", () => prisma.resellerInquiry.count());
+  await run("purchase", () => prisma.purchase.count());
+  await run("purchaseItem", () => prisma.purchaseItem.count());
+  await run("paymentEvent", () => prisma.paymentEvent.count());
+  await run("resellerSale", () => prisma.resellerSale.count());
+  await run("resellerOffer", () => prisma.resellerOffer.count());
+  await run("notification", () => prisma.notification.count());
+  await run("auditLog", () => prisma.auditLog.count());
+  await run("client", () => prisma.client.count());
+  await run("workflowDefinition", () => prisma.workflowDefinition.count());
+  await run("wikiArticle", () => prisma.wikiArticle.count());
+
+  // Nested query used by dashboard
+  await run("dashboardRecentUsers", async () => {
+    const rows = await prisma.user.findMany({
+      where: { role: "USER" },
+      take: 1,
+      select: {
+        id: true,
+        productAccess: {
+          take: 1,
+          select: { product: { select: { name: true } } },
+        },
+      },
+    });
+    return rows.length;
+  });
+
+  const failed = Object.entries(checks)
+    .filter(([, v]) => !v.ok)
+    .map(([k, v]) => ({ model: k, error: v.detail }));
+
+  res.status(failed.length ? 500 : 200).json(
+    ok({
+      ok: failed.length === 0,
+      failed,
+      checks,
     })
   );
 });

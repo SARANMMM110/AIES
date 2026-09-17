@@ -1,0 +1,7 @@
+[
+  {
+    "type": "TABLE",
+    "table": "audit_logs",
+    "model": "AuditLog"
+  }
+]
