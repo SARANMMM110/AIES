@@ -233,66 +233,109 @@ export default function EntitlementsPage() {
                 aria-labelledby="wp-modal-title"
                 onSubmit={(e) => void publishWordPress(e)}
               >
-                <h3 id="wp-modal-title">Link sales page to WordPress</h3>
-                <p>
-                  Deploy the branded <strong>sales page</strong> for{" "}
-                  <strong>{wpTarget.title}</strong> on your WordPress domain. Use an Application
-                  Password from WordPress → Users → Profile (Administrator required for homepage).
-                </p>
-                <label>
-                  WordPress site link
-                  <input
-                    value={wpSiteUrl}
-                    onChange={(e) => setWpSiteUrl(e.target.value)}
-                    placeholder="https://yoursite.com"
-                    required
-                    autoFocus
-                  />
-                </label>
-                <label>
-                  Username
-                  <input
-                    value={wpUser}
-                    onChange={(e) => setWpUser(e.target.value)}
-                    autoComplete="off"
-                    required
-                  />
-                </label>
-                <label>
-                  Application password
-                  <input
-                    type="password"
-                    value={wpPassword}
-                    onChange={(e) => setWpPassword(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                  />
-                </label>
-                <label style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start", fontWeight: 600 }}>
-                  <input
-                    type="checkbox"
-                    checked={wpAsHomepage}
-                    onChange={(e) => setWpAsHomepage(e.target.checked)}
-                    style={{ marginTop: "0.2rem" }}
-                  />
-                  <span>
-                    Deploy as homepage on this domain
-                    <span className="reseller-meta" style={{ display: "block", fontWeight: 500 }}>
-                      Opens at https://yoursite.com/ (hides WordPress header/menu). Uncheck to keep a
-                      sub-page URL.
+                <div className="reseller-modal-head">
+                  <div>
+                    <p className="reseller-modal-kicker">WordPress</p>
+                    <h3 id="wp-modal-title">Link sales page</h3>
+                  </div>
+                  <button
+                    className="reseller-modal-close"
+                    type="button"
+                    aria-label="Close"
+                    disabled={wpBusy}
+                    onClick={closeWordPress}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="reseller-modal-body">
+                  <div className="reseller-modal-agency">
+                    <strong>{wpTarget.title}</strong>
+                    <span>
+                      Publishes the branded sales page for {wpTarget.product.name}. Use an Application
+                      Password from WordPress → Users → Profile.
                     </span>
-                  </span>
-                </label>
-                {wpError ? <p className="error">{wpError}</p> : null}
-                <div className="reseller-modal-actions">
+                  </div>
+
+                  <div className="reseller-modal-section">
+                    <p className="reseller-modal-section-title">Site</p>
+                    <label>
+                      WordPress site link
+                      <input
+                        type="url"
+                        value={wpSiteUrl}
+                        onChange={(e) => setWpSiteUrl(e.target.value)}
+                        placeholder="https://yoursite.com"
+                        required
+                        autoFocus
+                      />
+                    </label>
+                  </div>
+
+                  <div className="reseller-modal-section">
+                    <p className="reseller-modal-section-title">Access</p>
+                    <div className="reseller-field-row">
+                      <label>
+                        Username
+                        <input
+                          type="text"
+                          value={wpUser}
+                          onChange={(e) => setWpUser(e.target.value)}
+                          autoComplete="off"
+                          required
+                        />
+                      </label>
+                      <label>
+                        Application password
+                        <input
+                          type="password"
+                          value={wpPassword}
+                          onChange={(e) => setWpPassword(e.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="reseller-modal-section">
+                    <p className="reseller-modal-section-title">Destination</p>
+                    <label
+                      className={`reseller-modal-option${wpAsHomepage ? " is-on" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={wpAsHomepage}
+                        onChange={(e) => setWpAsHomepage(e.target.checked)}
+                      />
+                      <span>
+                        <strong>Deploy as homepage on this domain</strong>
+                        <em>
+                          Sales page opens at your domain root. WordPress header and menu are hidden.
+                          Needs an Administrator application password.
+                        </em>
+                        <span className="reseller-modal-url">
+                          {wpAsHomepage
+                            ? `${(wpSiteUrl || "https://yoursite.com").replace(/\/$/, "")}/`
+                            : `${(wpSiteUrl || "https://yoursite.com").replace(/\/$/, "")}/…/`}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {wpError ? <p className="error">{wpError}</p> : null}
+                </div>
+
+                <div className="reseller-modal-foot">
                   <button className="btn ghost" type="button" disabled={wpBusy} onClick={closeWordPress}>
                     Cancel
                   </button>
                   <button className="btn lime" type="submit" disabled={wpBusy}>
                     {wpBusy
                       ? wpAsHomepage
-                        ? "Deploying to domain…"
-                        : "Publishing sales page…"
+                        ? "Deploying…"
+                        : "Publishing…"
                       : wpAsHomepage
                         ? "Deploy on domain"
                         : "Publish sales page"}
