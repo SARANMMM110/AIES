@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiClientError } from "@/lib/api";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
 type CustomerRow = {
@@ -24,15 +24,54 @@ type CustomerRow = {
 export default function AdminUsersPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const pager = useClientPagination(customers);
 
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await apiFetch<{ customers: CustomerRow[] }>("/api/users/customers");
+      setCustomers(data.customers || []);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    void apiFetch<{ customers: CustomerRow[] }>("/api/users/customers")
-      .then((data) => setCustomers(data.customers || []))
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
+    void load().catch((err: Error) => {
+      setError(err.message);
+      setLoading(false);
+    });
   }, []);
+
+  async function deleteCustomer(row: CustomerRow) {
+    const okConfirm = window.confirm(
+      `Delete ${row.firstName} ${row.lastName} (${row.email})?\n\nThis removes their login and agency access.`
+    );
+    if (!okConfirm) return;
+
+    const previous = customers;
+    setCustomers((list) => list.filter((c) => c.id !== row.id));
+    setBusyId(row.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await apiFetch<{
+        deleted?: boolean;
+        deactivated?: boolean;
+        message?: string;
+      }>(`/api/users/${row.id}`, { method: "DELETE" });
+      setNotice(result.message || (result.deleted ? "Customer deleted." : "Customer removed."));
+    } catch (err) {
+      setCustomers(previous);
+      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <Protected adminOnly>
@@ -47,6 +86,7 @@ export default function AdminUsersPage() {
           }
         />
         {error ? <p className="error">{error}</p> : null}
+        {notice ? <p className="muted">{notice}</p> : null}
 
         <div className="panel">
           {loading ? (
@@ -80,9 +120,19 @@ export default function AdminUsersPage() {
                       <td>{row.agencies.join(", ") || "—"}</td>
                       <td>{new Date(row.grantedAt).toLocaleString()}</td>
                       <td>
-                        <Link className="btn btn-sm" href={`/admin/users/${row.id}`}>
-                          Manage access
-                        </Link>
+                        <div className="row-actions">
+                          <Link className="btn btn-sm" href={`/admin/users/${row.id}`}>
+                            Manage access
+                          </Link>
+                          <button
+                            type="button"
+                            className="btn btn-sm ghost"
+                            disabled={busyId === row.id}
+                            onClick={() => void deleteCustomer(row)}
+                          >
+                            {busyId === row.id ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -241,3 +241,85 @@ usersRouter.patch(
     }
   }
 );
+
+usersRouter.delete("/:id", requireAdmin, async (req: AuthRequest, res, next) => {
+  try {
+    const id = req.params.id;
+    if (id === req.user!.id) {
+      throw new AppError(400, "You cannot delete your own account", "INVALID_OPERATION");
+    }
+
+    const target = await prisma.user.findUnique({ where: { id } });
+    if (!target) throw new AppError(404, "User not found", "NOT_FOUND");
+    if (target.role === "ADMIN") {
+      throw new AppError(403, "Admin accounts cannot be deleted here", "FORBIDDEN");
+    }
+
+    // Revoke sessions first so the customer cannot keep using the app.
+    await prisma.session.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    try {
+      await prisma.user.delete({ where: { id } });
+    } catch (err) {
+      // FK restrictions (e.g. reseller sales) — deactivate and strip access instead.
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code?: string }).code ?? "")
+          : "";
+      if (code !== "P2003" && code !== "P2014") throw err;
+
+      await prisma.productAccess.updateMany({
+        where: { userId: id, status: "ACTIVE" },
+        data: { status: "REVOKED" },
+      });
+      await prisma.bundleAccess.updateMany({
+        where: { userId: id, status: "ACTIVE" },
+        data: { status: "REVOKED" },
+      });
+      const stamp = Date.now();
+      await prisma.user.update({
+        where: { id },
+        data: {
+          isActive: false,
+          email: `deleted+${stamp}.${target.email}`.slice(0, 255),
+        },
+      });
+
+      const { writeAuditLog } = await import("../audit/audit");
+      await writeAuditLog({
+        actorId: req.user?.id,
+        actorEmail: req.user?.email,
+        action: "user.deactivated",
+        entityType: "User",
+        entityId: id,
+        metadata: { email: target.email, reason: "fk_block" },
+      });
+
+      res.json(
+        ok({
+          deleted: false,
+          deactivated: true,
+          message: "User deactivated and access revoked (linked commercial records kept).",
+        })
+      );
+      return;
+    }
+
+    const { writeAuditLog } = await import("../audit/audit");
+    await writeAuditLog({
+      actorId: req.user?.id,
+      actorEmail: req.user?.email,
+      action: "user.deleted",
+      entityType: "User",
+      entityId: id,
+      metadata: { email: target.email },
+    });
+
+    res.json(ok({ deleted: true, deactivated: false, message: "User deleted" }));
+  } catch (err) {
+    next(err);
+  }
+});
