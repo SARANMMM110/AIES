@@ -43,24 +43,22 @@ export function ProductShell({
       <div className="studio-header-fixed">
         <header className="page-header" role="banner">
           <div className="page-header-left">
-            {!isAdmin ? (
-              <button type="button" className="page-back" aria-label="Go back" onClick={goBack}>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-                Back
-              </button>
-            ) : null}
+            <button type="button" className="page-back" aria-label="Go back" onClick={goBack}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Back
+            </button>
             <Link
               href={isAdmin ? "/admin/products" : "/dashboard"}
               className="page-header-brand"
