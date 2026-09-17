@@ -100,7 +100,8 @@ export function AppShell({
       return;
     }
 
-    const storageKey = `aes_can_resell:${user.id}`;
+    const userId = user.id;
+    const storageKey = `aes_can_resell:${userId}`;
     try {
       const cached = sessionStorage.getItem(storageKey);
       if (cached === "1") setCanResell(true);
@@ -126,7 +127,7 @@ export function AppShell({
 
     function onVisibility(event: Event) {
       const detail = (event as CustomEvent<{ userId?: string; canResell?: boolean }>).detail;
-      if (!detail || (detail.userId && detail.userId !== user.id)) return;
+      if (!detail || (detail.userId && detail.userId !== userId)) return;
       if (typeof detail.canResell === "boolean") apply(detail.canResell);
     }
 
