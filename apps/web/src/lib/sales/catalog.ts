@@ -71,6 +71,7 @@ type ApiEnvelope<T> = { success: true; data: T } | { success: false; error: { me
 const CATALOG_REVALIDATE_SECONDS = 60;
 
 export function getApiBase(): string {
+  // Server-side: talk to the API on loopback (avoids nginx/hairpin/SSL issues).
   if (typeof window === "undefined") {
     return (
       process.env.API_INTERNAL_URL ||
@@ -78,7 +79,12 @@ export function getApiBase(): string {
       "http://127.0.0.1:4000"
     );
   }
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+  // Browser: prefer same-origin (nginx proxies /api → :4000). Avoids localhost:4000 in prod builds.
+  const pub = process.env.NEXT_PUBLIC_API_URL;
+  if (!pub || pub.includes("localhost") || pub.includes("127.0.0.1")) {
+    return "";
+  }
+  return pub;
 }
 
 async function fetchCatalogJson<T>(path: string): Promise<T> {

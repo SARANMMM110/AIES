@@ -1,4 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export function getClientApiBase(): string {
+  const pub = process.env.NEXT_PUBLIC_API_URL;
+  // Same-origin when unset or accidentally set to localhost (common bad prod build).
+  if (!pub || pub.includes("localhost") || pub.includes("127.0.0.1")) {
+    return "";
+  }
+  return pub;
+}
 
 export type ApiResult<T> =
   | { success: true; data: T }
@@ -40,7 +47,7 @@ export async function apiFetch<T>(
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getClientApiBase()}${path}`, {
     ...options,
     headers,
   });

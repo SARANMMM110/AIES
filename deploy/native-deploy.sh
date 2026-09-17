@@ -48,8 +48,10 @@ fi
 echo "Installing dependencies..."
 pnpm install --frozen-lockfile
 
-echo "Building..."
+echo "Building (NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://aienterprisestudio.com})..."
 export NODE_ENV=production
+export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://aienterprisestudio.com}"
+export API_INTERNAL_URL="${API_INTERNAL_URL:-http://127.0.0.1:4000}"
 pnpm build
 
 echo "Running migrations..."

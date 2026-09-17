@@ -7,10 +7,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { ResellerGate } from "@/components/ResellerGate";
 import { ResellerNav } from "@/components/ResellerNav";
-import { apiFetch, getToken } from "@/lib/api";
+import { apiFetch, getToken, getClientApiBase } from "@/lib/api";
 import "../reseller.css";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = getClientApiBase();
 
 type Agency = {
   id: string;

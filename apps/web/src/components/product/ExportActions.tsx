@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ApiClientError, getToken } from "@/lib/api";
+import { ApiClientError, getToken, getClientApiBase } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = getClientApiBase();
 
 export type ExportKind = "standalone" | "sales-page";
 
