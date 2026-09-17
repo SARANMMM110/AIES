@@ -169,18 +169,28 @@ export function SalesHeader() {
               </Link>
             </>
           ) : inquireHref ? (
-            <Link
-              className="sales-header-cta"
-              href={inquireHref}
-              onClick={() => {
-                if (inquireHref === "#purchase") {
+            inquireHref === "#purchase" ? (
+              <a
+                className="sales-header-cta"
+                href="#purchase"
+                onClick={(e) => {
+                  e.preventDefault();
                   setPinned(null);
                   setHash("purchase");
-                }
-              }}
-            >
-              Purchase
-            </Link>
+                  document.getElementById("purchase")?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                  history.replaceState(null, "", "#purchase");
+                }}
+              >
+                Purchase
+              </a>
+            ) : (
+              <Link className="sales-header-cta" href={inquireHref}>
+                Purchase
+              </Link>
+            )
           ) : null}
         </div>
       </div>

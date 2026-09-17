@@ -169,62 +169,85 @@ async function loadActiveBundles(
   return bundles.map((b) => mapBundlePublic(b, agencyBySlug));
 }
 
+type AgencyRow = Awaited<ReturnType<typeof loadPublishedAgencies>>[number];
+type BundleRow = Awaited<ReturnType<typeof loadActiveBundles>>[number];
+
+let catalogCache: {
+  at: number;
+  agencies: AgencyRow[];
+  bundles: BundleRow[];
+  body: ReturnType<typeof ok>;
+} | null = null;
+const CATALOG_TTL_MS = 60_000;
+
+async function buildCatalogPayload() {
+  const agencies = await loadPublishedAgencies();
+  const serviceCount = agencies.reduce((n, a) => n + a.serviceCount, 0);
+  const workflowCount = agencies.reduce((n, a) => n + a.workflowCount, 0);
+  const bundles = await loadActiveBundles(agencies);
+  const suite =
+    bundles.find((b) => b.slug === COMPLETE_SUITE_SLUG) ??
+    ({
+      id: "",
+      name: "AI Enterprise Studio Complete Suite",
+      slug: COMPLETE_SUITE_SLUG,
+      tagline: "10 AI agencies. One complete platform.",
+      description: null,
+      shortDescription: null,
+      status: "ACTIVE",
+      priceCents: null,
+      currency: "USD",
+      icon: null,
+      thumbnailUrl: null,
+      displayOrder: 0,
+      agencyCount: agencies.length,
+      serviceCount,
+      workflowCount,
+      productSlugs: agencies.map((a) => a.slug),
+      products: agencies.map((a) => ({
+        id: a.id,
+        name: a.name,
+        slug: a.slug,
+        icon: a.icon,
+        shortDescription: a.shortDescription,
+        priceCents: a.priceCents,
+        currency: a.currency,
+        serviceCount: a.serviceCount,
+        workflowCount: a.workflowCount,
+        accent: a.accent,
+        category: a.category,
+      })),
+      individualValueCents: agencies.reduce((n, a) => n + (a.priceCents ?? 0), 0),
+      savingsCents: 0,
+      isCompleteSuite: true,
+    } satisfies BundleRow);
+
+  const body = ok({
+    agencies,
+    bundles,
+    suite,
+    totals: {
+      products: agencies.length,
+      services: serviceCount,
+      workflows: workflowCount,
+      bundles: bundles.length,
+    },
+  });
+  return { agencies, bundles, body };
+}
+
 catalogRouter.get("/", async (_req, res, next) => {
   try {
-    const agencies = await loadPublishedAgencies();
-    const serviceCount = agencies.reduce((n, a) => n + a.serviceCount, 0);
-    const workflowCount = agencies.reduce((n, a) => n + a.workflowCount, 0);
-    const bundles = await loadActiveBundles(agencies);
-    const suite =
-      bundles.find((b) => b.slug === COMPLETE_SUITE_SLUG) ??
-      ({
-        id: "",
-        name: "AI Enterprise Studio Complete Suite",
-        slug: COMPLETE_SUITE_SLUG,
-        tagline: "10 AI agencies. One complete platform.",
-        description: null,
-        shortDescription: null,
-        status: "ACTIVE",
-        priceCents: null,
-        currency: "USD",
-        icon: null,
-        thumbnailUrl: null,
-        displayOrder: 0,
-        agencyCount: agencies.length,
-        serviceCount,
-        workflowCount,
-        productSlugs: agencies.map((a) => a.slug),
-        products: agencies.map((a) => ({
-          id: a.id,
-          name: a.name,
-          slug: a.slug,
-          icon: a.icon,
-          shortDescription: a.shortDescription,
-          priceCents: a.priceCents,
-          currency: a.currency,
-          serviceCount: a.serviceCount,
-          workflowCount: a.workflowCount,
-          accent: a.accent,
-          category: a.category,
-        })),
-        individualValueCents: agencies.reduce((n, a) => n + (a.priceCents ?? 0), 0),
-        savingsCents: 0,
-        isCompleteSuite: true,
-      } satisfies (typeof bundles)[number]);
-
-    res.json(
-      ok({
-        agencies,
-        bundles,
-        suite,
-        totals: {
-          products: agencies.length,
-          services: serviceCount,
-          workflows: workflowCount,
-          bundles: bundles.length,
-        },
-      })
-    );
+    const now = Date.now();
+    if (catalogCache && now - catalogCache.at < CATALOG_TTL_MS) {
+      res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60");
+      res.json(catalogCache.body);
+      return;
+    }
+    const built = await buildCatalogPayload();
+    catalogCache = { at: now, ...built };
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60");
+    res.json(built.body);
   } catch (err) {
     next(err);
   }
@@ -233,23 +256,36 @@ catalogRouter.get("/", async (_req, res, next) => {
 catalogRouter.get("/:slug", async (req, res, next) => {
   try {
     const slug = req.params.slug;
-    const agencies = await loadPublishedAgencies();
-    const bundles = await loadActiveBundles(agencies);
+    const now = Date.now();
+    let agencies: AgencyRow[];
+    let bundles: BundleRow[];
+    if (catalogCache && now - catalogCache.at < CATALOG_TTL_MS) {
+      agencies = catalogCache.agencies;
+      bundles = catalogCache.bundles;
+    } else {
+      const built = await buildCatalogPayload();
+      catalogCache = { at: now, ...built };
+      agencies = built.agencies;
+      bundles = built.bundles;
+    }
 
     if (slug === COMPLETE_SUITE_SLUG || slug === "complete-suite") {
       const suite = bundles.find((b) => b.slug === COMPLETE_SUITE_SLUG);
+      res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60");
       res.json(ok({ type: "suite" as const, suite, agencies, bundles }));
       return;
     }
 
     const bundle = bundles.find((b) => b.slug === slug);
     if (bundle) {
+      res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60");
       res.json(ok({ type: "bundle" as const, bundle, agencies }));
       return;
     }
 
     const agency = agencies.find((a) => a.slug === slug);
     if (!agency) throw new AppError(404, "Catalog item not found", "NOT_FOUND");
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=60");
     res.json(ok({ type: "agency" as const, agency }));
   } catch (err) {
     next(err);

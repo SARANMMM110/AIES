@@ -9,6 +9,7 @@ import { SalesInquiryForm } from "./SalesInquiryForm";
 import { InquireSection } from "./InquireSection";
 import { SalesFooter, SalesHeader } from "./SalesChrome";
 import { SalesResaleSection } from "./SalesResaleSection";
+import { ScrollToPurchase } from "./ScrollToPurchase";
 import "./purchase-flow.css";
 import "./catalog-sales.css";
 import "./inquiry-form.css";
@@ -164,9 +165,9 @@ export function AgencySalesView({
               <h1>{heroTitle}</h1>
               <p>{heroLead}</p>
               <div className="hero-actions">
-                <a className="btn lime" href="#purchase">
+                <ScrollToPurchase className="btn lime">
                   Purchase this agency →
-                </a>
+                </ScrollToPurchase>
                 <a className="btn outline" href="#solution">
                   See How It Works ◉
                 </a>
@@ -860,7 +861,7 @@ export function AgencySalesView({
           </div>
         </section>
 
-        <section className="purchase-wrap" id="purchase">
+        <section className="purchase-wrap" id="paths">
           <div className="container">
             <div className="purchase">
               <div className="purchase-copy">
@@ -887,9 +888,9 @@ export function AgencySalesView({
                   {embed ? (
                     <p className="sales-note">Preview only — open the sales page to inquire.</p>
                   ) : (
-                    <a className="btn lime" href="#purchase">
+                    <ScrollToPurchase className="btn lime">
                       Purchase this agency →
-                    </a>
+                    </ScrollToPurchase>
                   )}
                 </div>
                 <div className="buy">
@@ -923,9 +924,9 @@ export function AgencySalesView({
             </h2>
             <p>Turn opportunities into practical workflows, systems and measurable business capability.</p>
             <div className="hero-actions" style={{ justifyContent: "center" }}>
-              <a className="btn blue" href="#purchase">
+              <ScrollToPurchase className="btn blue">
                 Purchase this agency →
-              </a>
+              </ScrollToPurchase>
               <a className="btn white" href="#faq">
                 Learn More
               </a>
@@ -959,6 +960,7 @@ export function AgencySalesView({
 
         {!embed ? (
           <InquireSection
+            id="purchase"
             title={
               <>
                 Tell us what you need.

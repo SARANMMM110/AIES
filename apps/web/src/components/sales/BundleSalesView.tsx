@@ -9,6 +9,7 @@ import { SalesInquiryForm } from "./SalesInquiryForm";
 import { InquireSection } from "./InquireSection";
 import { SalesFooter, SalesHeader } from "./SalesChrome";
 import { SalesResaleSection } from "./SalesResaleSection";
+import { ScrollToPurchase } from "./ScrollToPurchase";
 import "./purchase-flow.css";
 import "./catalog-sales.css";
 import "./inquiry-form.css";
@@ -53,9 +54,9 @@ export function BundleSalesView({ bundle, agencies }: Props) {
                 `${bundle.agencyCount} agencies, ${bundle.serviceCount} services, and ${bundle.workflowCount} guided workflows in one pack.`}
             </p>
             <div className="catalog-hero-actions">
-              <a className="btn lime" href="#purchase">
+              <ScrollToPurchase className="btn lime">
                 Purchase this pack →
-              </a>
+              </ScrollToPurchase>
               <Link className="btn outline catalog-hero-outline" href="/sales">
                 Browse catalog
               </Link>

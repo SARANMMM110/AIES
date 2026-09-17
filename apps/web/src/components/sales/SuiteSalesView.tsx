@@ -7,6 +7,7 @@ import { SalesInquiryForm } from "./SalesInquiryForm";
 import { InquireSection } from "./InquireSection";
 import { SalesFooter, SalesHeader } from "./SalesChrome";
 import { SalesResaleSection } from "./SalesResaleSection";
+import { ScrollToPurchase } from "./ScrollToPurchase";
 import "./purchase-flow.css";
 import "./catalog-sales.css";
 import "./inquiry-form.css";
@@ -45,9 +46,9 @@ export function SuiteSalesView({ agencies, suite, totals }: Props) {
               review built into every delivery path.
             </p>
             <div className="catalog-hero-actions">
-              <a className="btn lime" href="#purchase">
+              <ScrollToPurchase className="btn lime">
                 Purchase the suite →
-              </a>
+              </ScrollToPurchase>
               <a className="btn outline catalog-hero-outline" href="#services">
                 Compare agencies
               </a>

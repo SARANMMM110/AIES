@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SalesCatalogView } from "@/components/sales/SalesCatalogView";
 import { fetchSalesCatalog } from "@/lib/sales/catalog";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Sales Catalog — Agencies & Bundles",

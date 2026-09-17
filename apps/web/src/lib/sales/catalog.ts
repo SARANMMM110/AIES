@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 export type CatalogAgency = {
   id: string;
   name: string;
@@ -65,8 +67,10 @@ export type CatalogPayload = {
 
 type ApiEnvelope<T> = { success: true; data: T } | { success: false; error: { message: string } };
 
+/** Public catalog can be cached briefly — cuts SSR latency between navigations. */
+const CATALOG_REVALIDATE_SECONDS = 60;
+
 export function getApiBase(): string {
-  // Server-side: talk to the API on loopback (avoids nginx/hairpin/SSL issues).
   if (typeof window === "undefined") {
     return (
       process.env.API_INTERNAL_URL ||
@@ -77,67 +81,60 @@ export function getApiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 }
 
-export async function fetchSalesCatalog(init?: RequestInit): Promise<CatalogPayload> {
-  const res = await fetch(`${getApiBase()}/api/catalog`, {
-    ...init,
-    headers: { Accept: "application/json", ...(init?.headers || {}) },
-    cache: "no-store",
+async function fetchCatalogJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${getApiBase()}${path}`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: CATALOG_REVALIDATE_SECONDS },
   });
   const text = await res.text();
-  let json: ApiEnvelope<CatalogPayload>;
+  let json: ApiEnvelope<T>;
   try {
-    json = JSON.parse(text) as ApiEnvelope<CatalogPayload>;
+    json = JSON.parse(text) as ApiEnvelope<T>;
   } catch {
     throw new Error(
-      `Catalog API returned non-JSON (${res.status}) from ${getApiBase()}/api/catalog`
+      `Catalog API returned non-JSON (${res.status}) from ${getApiBase()}${path}`
     );
   }
   if (!res.ok || !json.success) {
     throw new Error(!json.success ? json.error.message : "Failed to load catalog");
   }
+  return json.data;
+}
+
+/** Deduped within a single RSC request (metadata + page share one fetch). */
+export const fetchSalesCatalog = cache(async (): Promise<CatalogPayload> => {
+  const data = await fetchCatalogJson<CatalogPayload>("/api/catalog");
   return {
-    ...json.data,
-    bundles: json.data.bundles ?? (json.data.suite ? [json.data.suite] : []),
+    ...data,
+    bundles: data.bundles ?? (data.suite ? [data.suite] : []),
   };
-}
+});
 
-export async function fetchAgencyCatalog(slug: string): Promise<CatalogAgency> {
-  const res = await fetch(`${getApiBase()}/api/catalog/${encodeURIComponent(slug)}`, {
-    cache: "no-store",
-    headers: { Accept: "application/json" },
-  });
-  const json = (await res.json()) as ApiEnvelope<{ type: string; agency: CatalogAgency }>;
-  if (!res.ok || !json.success || json.data.type !== "agency") {
-    throw new Error(!json.success ? json.error.message : "Agency not found");
-  }
-  return json.data.agency;
-}
+export const fetchAgencyCatalog = cache(async (slug: string): Promise<CatalogAgency> => {
+  const data = await fetchCatalogJson<{ type: string; agency: CatalogAgency }>(
+    `/api/catalog/${encodeURIComponent(slug)}`
+  );
+  if (data.type !== "agency") throw new Error("Agency not found");
+  return data.agency;
+});
 
-export async function fetchBundleCatalog(slug: string): Promise<{
-  bundle: CatalogBundle;
-  agencies: CatalogAgency[];
-}> {
-  const res = await fetch(`${getApiBase()}/api/catalog/${encodeURIComponent(slug)}`, {
-    cache: "no-store",
-    headers: { Accept: "application/json" },
-  });
-  const json = (await res.json()) as ApiEnvelope<{
+export const fetchBundleCatalog = cache(async (
+  slug: string
+): Promise<{ bundle: CatalogBundle; agencies: CatalogAgency[] }> => {
+  const data = await fetchCatalogJson<{
     type: string;
     bundle?: CatalogBundle;
     suite?: CatalogBundle;
     agencies: CatalogAgency[];
-  }>;
-  if (!res.ok || !json.success) {
-    throw new Error(!json.success ? json.error.message : "Bundle not found");
+  }>(`/api/catalog/${encodeURIComponent(slug)}`);
+  if (data.type === "suite" && data.suite) {
+    return { bundle: data.suite, agencies: data.agencies };
   }
-  if (json.data.type === "suite" && json.data.suite) {
-    return { bundle: json.data.suite, agencies: json.data.agencies };
-  }
-  if (json.data.type === "bundle" && json.data.bundle) {
-    return { bundle: json.data.bundle, agencies: json.data.agencies };
+  if (data.type === "bundle" && data.bundle) {
+    return { bundle: data.bundle, agencies: data.agencies };
   }
   throw new Error("Bundle not found");
-}
+});
 
 export const AGENCY_SLUGS = [
   "ai-advantage-agency",

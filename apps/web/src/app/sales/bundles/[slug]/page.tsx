@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BundleSalesView } from "@/components/sales/BundleSalesView";
-import { fetchBundleCatalog, fetchSalesCatalog } from "@/lib/sales/catalog";
+import { fetchSalesCatalog } from "@/lib/sales/catalog";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   try {
-    const { bundle } = await fetchBundleCatalog(slug);
+    const catalog = await fetchSalesCatalog();
+    const bundle =
+      catalog.bundles.find((b) => b.slug === slug) ||
+      (slug === "complete-suite" || slug === catalog.suite.slug ? catalog.suite : null);
+    if (!bundle) return { title: "Bundle" };
     return {
       title: `${bundle.name} — Bundle`,
       description: bundle.shortDescription || bundle.tagline,
@@ -24,12 +28,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BundleSalesPage({ params }: Props) {
   const { slug } = await params;
   try {
-    const [{ bundle, agencies }, catalog] = await Promise.all([
-      fetchBundleCatalog(slug),
-      fetchSalesCatalog(),
-    ]);
+    const catalog = await fetchSalesCatalog();
+    const bundle =
+      catalog.bundles.find((b) => b.slug === slug) ||
+      (slug === "complete-suite" || slug === catalog.suite.slug ? catalog.suite : null);
+    if (!bundle) notFound();
     return (
-      <BundleSalesView bundle={bundle} agencies={agencies} allBundles={catalog.bundles} />
+      <BundleSalesView
+        bundle={bundle}
+        agencies={catalog.agencies}
+        allBundles={catalog.bundles}
+      />
     );
   } catch {
     notFound();

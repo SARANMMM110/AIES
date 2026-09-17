@@ -234,6 +234,7 @@
 /* Shared dark inquire section (matches catalog purchase block) */
 .aes-inquire {
   --sales-accent: var(--lime, #d9f464);
+  scroll-margin-top: 96px;
   padding: 4.5rem 0;
   background:
     radial-gradient(720px 340px at 15% 0%, color-mix(in srgb, var(--sales-accent) 16%, transparent), transparent 60%),

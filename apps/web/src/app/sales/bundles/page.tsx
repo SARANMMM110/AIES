@@ -5,7 +5,7 @@ import { fetchSalesCatalog } from "@/lib/sales/catalog";
 import { formatMoney } from "@/lib/purchase";
 import "@/components/sales/purchase-flow.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata = {
   title: "Bundles — AI Enterprise Studio",
