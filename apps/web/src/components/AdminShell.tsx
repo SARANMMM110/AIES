@@ -30,15 +30,29 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
 
-  // Warm list caches so Catalog pages paint instantly on navigation.
+  // Warm caches one-at-a-time so we don't stampede the DB pool on login.
   useEffect(() => {
     if (!user) return;
-    void Promise.allSettled([
-      fetchAdminCached(ADMIN_CACHE_KEYS.products, "/api/products"),
-      fetchAdminCached(ADMIN_CACHE_KEYS.bundles, "/api/bundles"),
-      fetchAdminCached(ADMIN_CACHE_KEYS.wikiArticles, "/api/wiki/admin/articles"),
-      fetchAdminCached(ADMIN_CACHE_KEYS.inquiries, "/api/sales/inquiries"),
-    ]);
+    let cancelled = false;
+    void (async () => {
+      const jobs = [
+        () => fetchAdminCached(ADMIN_CACHE_KEYS.products, "/api/products"),
+        () => fetchAdminCached(ADMIN_CACHE_KEYS.bundles, "/api/bundles"),
+        () => fetchAdminCached(ADMIN_CACHE_KEYS.wikiArticles, "/api/wiki/admin/articles"),
+        () => fetchAdminCached(ADMIN_CACHE_KEYS.inquiries, "/api/sales/inquiries"),
+      ];
+      for (const job of jobs) {
+        if (cancelled) return;
+        try {
+          await job();
+        } catch {
+          /* ignore warm failures */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   async function handleLogout() {

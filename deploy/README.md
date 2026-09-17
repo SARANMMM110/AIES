@@ -40,6 +40,7 @@ JWT_SECRET=...long-secret...
 
 # Supabase → Connect → Session pooler (port 5432). NOT db.*.supabase.co
 DATABASE_URL=postgresql://postgres.hiybersyslkgeqslfkqo:YOUR_PASSWORD@aws-0-YOUR_REGION.pooler.supabase.com:5432/postgres?sslmode=require
+# Session pooler port 5432 only. Remove connection_limit=1 if present in .env — it causes pool timeouts.
 ```
 
 ## 3. Build, migrate, start
