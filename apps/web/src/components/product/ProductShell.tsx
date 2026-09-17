@@ -20,16 +20,20 @@ export type ProductViewMode = "workspace" | "sales";
 export function ProductShell({
   slug,
   accent = "#caff45",
+  mode = "user",
   children,
 }: {
   slug: string;
   productName?: string;
   category?: string;
   accent?: string;
+  /** Admin preview: full-page workspace/sales without user nav chrome. */
+  mode?: "user" | "admin";
   children: React.ReactNode;
 }) {
   const [view, setView] = useState<ProductViewMode>("workspace");
-  const goBack = useNavigateBack("/products");
+  const goBack = useNavigateBack(mode === "admin" ? "/admin/products" : "/products");
+  const isAdmin = mode === "admin";
 
   return (
     <div
@@ -37,60 +41,69 @@ export function ProductShell({
       style={{ ["--agency-accent" as string]: accent }}
     >
       <div className="studio-header-fixed">
-      <header className="page-header" role="banner">
-        <div className="page-header-left">
-          <button type="button" className="page-back" aria-label="Go back" onClick={goBack}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
+        <header className="page-header" role="banner">
+          <div className="page-header-left">
+            {!isAdmin ? (
+              <button type="button" className="page-back" aria-label="Go back" onClick={goBack}>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                Back
+              </button>
+            ) : null}
+            <Link
+              href={isAdmin ? "/admin/products" : "/dashboard"}
+              className="page-header-brand"
             >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            Back
-          </button>
-          <Link href="/dashboard" className="page-header-brand">
-            AI ENTERPRISE STUDIO
-          </Link>
-          <nav className="page-header-menu" aria-label="Product views">
-            <button
-              type="button"
-              className={view === "workspace" ? "page-menu-item active" : "page-menu-item"}
-              aria-pressed={view === "workspace"}
-              onClick={() => setView("workspace")}
-            >
-              Workspace
-            </button>
-            <button
-              type="button"
-              className={view === "sales" ? "page-menu-item active" : "page-menu-item"}
-              aria-pressed={view === "sales"}
-              onClick={() => setView("sales")}
-            >
-              Sales Page
-            </button>
-          </nav>
-        </div>
-        <div className="page-header-actions">
-          {view === "workspace" ? (
-            <ExportActions slug={slug} variant="page-header" exportKind="standalone" />
-          ) : (
-            <ExportActions slug={slug} variant="page-header" exportKind="sales-page" />
-          )}
-          <Link className="page-header-link" href="/products">
-            My Products
-          </Link>
-          <Link className="page-header-link page-header-link-accent" href="/dashboard">
-            Dashboard
-          </Link>
-        </div>
-      </header>
+              AI ENTERPRISE STUDIO
+            </Link>
+            <nav className="page-header-menu" aria-label="Product views">
+              <button
+                type="button"
+                className={view === "workspace" ? "page-menu-item active" : "page-menu-item"}
+                aria-pressed={view === "workspace"}
+                onClick={() => setView("workspace")}
+              >
+                Workspace
+              </button>
+              <button
+                type="button"
+                className={view === "sales" ? "page-menu-item active" : "page-menu-item"}
+                aria-pressed={view === "sales"}
+                onClick={() => setView("sales")}
+              >
+                Sales Page
+              </button>
+            </nav>
+          </div>
+          <div className="page-header-actions">
+            {view === "workspace" ? (
+              <ExportActions slug={slug} variant="page-header" exportKind="standalone" />
+            ) : (
+              <ExportActions slug={slug} variant="page-header" exportKind="sales-page" />
+            )}
+            {!isAdmin ? (
+              <>
+                <Link className="page-header-link" href="/products">
+                  My Products
+                </Link>
+                <Link className="page-header-link page-header-link-accent" href="/dashboard">
+                  Dashboard
+                </Link>
+              </>
+            ) : null}
+          </div>
+        </header>
       </div>
 
       <section
