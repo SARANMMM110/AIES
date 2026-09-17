@@ -503,14 +503,22 @@ export function serializePurchase(
       quantity: item.quantity,
       price: item.price,
       product: item.product
-        ? { id: item.product.id, name: item.product.name, slug: item.product.slug }
+        ? {
+            id: item.product.id,
+            name: item.product.name || item.product.slug || "Agency",
+            slug: item.product.slug,
+          }
         : item.productId
-          ? { id: item.productId, name: null, slug: null }
+          ? { id: item.productId, name: "Agency", slug: null }
           : null,
       bundle: item.bundle
-        ? { id: item.bundle.id, name: item.bundle.name, slug: item.bundle.slug }
+        ? {
+            id: item.bundle.id,
+            name: item.bundle.name || item.bundle.slug || "Bundle",
+            slug: item.bundle.slug,
+          }
         : item.bundleId
-          ? { id: item.bundleId, name: null, slug: null }
+          ? { id: item.bundleId, name: "Bundle", slug: null }
           : null,
     })),
   };

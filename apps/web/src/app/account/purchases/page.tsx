@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { apiFetch } from "@/lib/api";
-import { formatMoney, purchaseTypeLabel } from "@/lib/purchase";
+import { formatMoney, purchaseItemsLabel, purchaseTypeLabel } from "@/lib/purchase";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
 type PurchaseRow = {
@@ -79,15 +79,15 @@ export default function AccountPurchasesPage() {
                       </td>
                       <td>{new Date(p.createdAt).toLocaleString()}</td>
                       <td>{purchaseTypeLabel(p.purchaseType)}</td>
-                      <td>
-                        {p.items
-                          .map((i) => i.product?.name ?? i.bundle?.name ?? i.itemType)
-                          .join(", ")}
-                      </td>
+                      <td>{purchaseItemsLabel(p.items, p.purchaseType)}</td>
                       <td>{formatMoney(p.totalAmount, p.currency)}</td>
                       <td>{p.status}</td>
                       <td>
-                        <Link href={`/account/purchases/${p.id}`}>Receipt</Link>
+                        {p.id.startsWith("access-") ? (
+                          <span className="muted">Access grant</span>
+                        ) : (
+                          <Link href={`/account/purchases/${p.id}`}>Receipt</Link>
+                        )}
                       </td>
                     </tr>
                   ))}

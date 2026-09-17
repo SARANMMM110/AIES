@@ -42,7 +42,25 @@ export default function AccountPage() {
         method: "PUT",
         body: JSON.stringify({ key: row.key, ...next }),
       });
-      setResale((current) => (current ?? []).map((item) => (item.key === saved.key ? { ...item, ...saved } : item)));
+      setResale((current) => {
+        const nextRows = (current ?? []).map((item) =>
+          item.key === saved.key ? { ...item, ...saved } : item
+        );
+        if (user) {
+          const can = nextRows.some((item) => item.resell);
+          try {
+            sessionStorage.setItem(`aes_can_resell:${user.id}`, can ? "1" : "0");
+          } catch {
+            /* ignore */
+          }
+          window.dispatchEvent(
+            new CustomEvent("aes:reseller-visibility", {
+              detail: { userId: user.id, canResell: can },
+            })
+          );
+        }
+        return nextRows;
+      });
     } catch (err) {
       setResaleError(err instanceof ApiClientError ? err.message : "Could not update resale");
     } finally {

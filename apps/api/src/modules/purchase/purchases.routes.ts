@@ -265,12 +265,128 @@ purchasesRouter.get("/analytics/summary", authenticate, requireAdmin, async (_re
 
 purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const purchases = await prisma.purchase.findMany({
-      where: { userId: req.user!.id },
-      include: purchaseIncludeDetail,
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(ok({ purchases: purchases.map(serializePurchase) }));
+    const userId = req.user!.id;
+    const [purchases, productAccess, bundleAccess] = await Promise.all([
+      prisma.purchase.findMany({
+        where: { userId },
+        include: purchaseIncludeDetail,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.productAccess.findMany({
+        where: {
+          userId,
+          status: "ACTIVE",
+          OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        },
+        include: { product: { select: { id: true, name: true, slug: true } } },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.bundleAccess.findMany({
+        where: {
+          userId,
+          status: "ACTIVE",
+          OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        },
+        include: { bundle: { select: { id: true, name: true, slug: true } } },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
+
+    const coveredProductIds = new Set<string>();
+    const coveredBundleIds = new Set<string>();
+    for (const purchase of purchases) {
+      for (const item of purchase.items) {
+        if (item.productId) coveredProductIds.add(item.productId);
+        if (item.bundleId) coveredBundleIds.add(item.bundleId);
+      }
+    }
+
+    const rows = purchases.map(serializePurchase);
+
+    // Admin grants / provisioned access often have no Purchase row — still show them
+    // (including the user's first unlocked agency) in purchase history.
+    for (const access of bundleAccess) {
+      if (coveredBundleIds.has(access.bundleId)) continue;
+      coveredBundleIds.add(access.bundleId);
+      rows.push({
+        id: `access-bundle-${access.id}`,
+        code: `ACC-${access.id.slice(-8).toUpperCase()}`,
+        status: "COMPLETED",
+        purchaseType: "BUNDLE",
+        totalAmount: 0,
+        subtotalAmount: 0,
+        discountAmount: 0,
+        currency: "USD",
+        paymentStatus: access.source === "ADMIN_GRANT" ? "ADMIN_GRANT" : "GRANTED",
+        paymentNote: "Access granted by AES team",
+        paymentProvider: null,
+        providerSessionId: null,
+        providerPaymentId: null,
+        paidAt: access.createdAt,
+        accessProvisionedAt: access.createdAt,
+        cancelledAt: null,
+        refundedAt: null,
+        createdAt: access.createdAt,
+        updatedAt: access.updatedAt,
+        items: [
+          {
+            id: access.id,
+            itemType: "BUNDLE",
+            quantity: 1,
+            price: 0,
+            product: null,
+            bundle: access.bundle
+              ? { id: access.bundle.id, name: access.bundle.name, slug: access.bundle.slug }
+              : null,
+          },
+        ],
+      });
+    }
+
+    for (const access of productAccess) {
+      // Bundle-materialized rows are represented by the bundle grant above when present.
+      if (access.bundleId) continue;
+      if (coveredProductIds.has(access.productId)) continue;
+      coveredProductIds.add(access.productId);
+      rows.push({
+        id: `access-product-${access.id}`,
+        code: `ACC-${access.id.slice(-8).toUpperCase()}`,
+        status: "COMPLETED",
+        purchaseType: "PRODUCT",
+        totalAmount: 0,
+        subtotalAmount: 0,
+        discountAmount: 0,
+        currency: "USD",
+        paymentStatus: access.source === "ADMIN_GRANT" ? "ADMIN_GRANT" : "GRANTED",
+        paymentNote: "Access granted by AES team",
+        paymentProvider: null,
+        providerSessionId: null,
+        providerPaymentId: null,
+        paidAt: access.createdAt,
+        accessProvisionedAt: access.createdAt,
+        cancelledAt: null,
+        refundedAt: null,
+        createdAt: access.createdAt,
+        updatedAt: access.updatedAt,
+        items: [
+          {
+            id: access.id,
+            itemType: "PRODUCT",
+            quantity: 1,
+            price: 0,
+            product: access.product
+              ? { id: access.product.id, name: access.product.name, slug: access.product.slug }
+              : access.productId
+                ? { id: access.productId, name: null, slug: null }
+                : null,
+            bundle: null,
+          },
+        ],
+      });
+    }
+
+    rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    res.json(ok({ purchases: rows }));
   } catch (err) {
     next(err);
   }

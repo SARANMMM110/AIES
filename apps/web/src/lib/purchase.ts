@@ -118,3 +118,29 @@ export function purchaseTypeLabel(type: string): string {
       return type;
   }
 }
+
+export function purchaseItemLabel(item: {
+  itemType?: string;
+  product?: { name?: string | null; slug?: string | null } | null;
+  bundle?: { name?: string | null; slug?: string | null } | null;
+}): string {
+  return (
+    item.product?.name ||
+    item.bundle?.name ||
+    item.product?.slug ||
+    item.bundle?.slug ||
+    (item.itemType === "BUNDLE" ? "Bundle" : item.itemType === "PRODUCT" ? "Agency" : "Item")
+  );
+}
+
+export function purchaseItemsLabel(
+  items: Array<{
+    itemType?: string;
+    product?: { name?: string | null; slug?: string | null } | null;
+    bundle?: { name?: string | null; slug?: string | null } | null;
+  }>,
+  fallbackType?: string
+): string {
+  if (!items?.length) return purchaseTypeLabel(fallbackType || "PRODUCT");
+  return items.map(purchaseItemLabel).join(", ");
+}

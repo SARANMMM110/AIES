@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/ProductCard";
 import { Protected } from "@/components/Protected";
 import { apiFetch } from "@/lib/api";
-import { formatMoney, purchaseTypeLabel } from "@/lib/purchase";
+import { formatMoney, purchaseItemLabel, purchaseTypeLabel } from "@/lib/purchase";
 
 type PurchaseDetail = {
   id: string;
@@ -109,7 +109,7 @@ export default function PurchaseReceiptPage() {
               <tbody>
                 {purchase.items.map((item, idx) => (
                   <tr key={idx}>
-                    <td>{item.product?.name ?? item.bundle?.name ?? item.itemType}</td>
+                    <td>{purchaseItemLabel(item)}</td>
                     <td>{item.quantity}</td>
                     <td>{formatMoney(item.price, purchase.currency)}</td>
                     <td>{formatMoney(item.price * item.quantity, purchase.currency)}</td>

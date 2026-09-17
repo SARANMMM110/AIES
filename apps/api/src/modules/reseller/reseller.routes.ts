@@ -220,6 +220,18 @@ resellerRouter.get("/public/brand-assets/:userId/:filename", async (req, res, ne
 
 resellerRouter.use(authenticate);
 
+/** Lightweight flag for user nav — only true when Resell is ON for at least one entitlement. */
+resellerRouter.get("/status", async (req: AuthRequest, res, next) => {
+  try {
+    const count = await prisma.resellerEntitlement.count({
+      where: { userId: req.user!.id, status: "ACTIVE" },
+    });
+    res.json(ok({ canResell: count > 0 }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 async function ownedPreview(userId: string, offerId: string) {
   const offer = await prisma.resellerOffer.findFirst({
     where: { id: offerId, resellerUserId: userId },

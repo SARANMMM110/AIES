@@ -95,13 +95,43 @@ export function AppShell({
   const [canResell, setCanResell] = useState(false);
 
   useEffect(() => {
-    if (!user || variant === "admin") return;
-    void Promise.all([
-      apiFetch<{ entitlements: unknown[] }>("/api/reseller/me").catch(() => ({ entitlements: [] as unknown[] })),
-      apiFetch<Array<{ key: string }>>("/api/reseller/account").catch(() => [] as Array<{ key: string }>),
-    ]).then(([me, account]) => {
-      setCanResell(me.entitlements.length > 0 || (Array.isArray(account) && account.length > 0));
-    });
+    if (!user || variant === "admin") {
+      setCanResell(false);
+      return;
+    }
+
+    const storageKey = `aes_can_resell:${user.id}`;
+    try {
+      const cached = sessionStorage.getItem(storageKey);
+      if (cached === "1") setCanResell(true);
+      else if (cached === "0") setCanResell(false);
+    } catch {
+      /* ignore */
+    }
+
+    function apply(can: boolean) {
+      setCanResell(can);
+      try {
+        sessionStorage.setItem(storageKey, can ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+    }
+
+    void apiFetch<{ canResell: boolean }>("/api/reseller/status")
+      .then((data) => apply(Boolean(data.canResell)))
+      .catch(() => {
+        /* keep cached value on transient failure so the menu does not flicker off */
+      });
+
+    function onVisibility(event: Event) {
+      const detail = (event as CustomEvent<{ userId?: string; canResell?: boolean }>).detail;
+      if (!detail || (detail.userId && detail.userId !== user.id)) return;
+      if (typeof detail.canResell === "boolean") apply(detail.canResell);
+    }
+
+    window.addEventListener("aes:reseller-visibility", onVisibility);
+    return () => window.removeEventListener("aes:reseller-visibility", onVisibility);
   }, [user, variant]);
 
   const links = (variant === "admin" ? ADMIN_LINKS : USER_LINKS).filter(
