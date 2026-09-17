@@ -667,6 +667,7 @@ export async function adminSetStatus(id: string, status: WikiStatus) {
 }
 
 export async function adminListAll(opts?: { q?: string; status?: WikiStatus; categoryId?: string }) {
+  // No per-row _count — 172 articles × 3 count joins is very slow over Supabase.
   return prisma.wikiArticle.findMany({
     where: {
       ...(opts?.status ? { status: opts.status } : {}),
@@ -690,13 +691,6 @@ export async function adminListAll(opts?: { q?: string; status?: WikiStatus; cat
       displayOrder: true,
       updatedAt: true,
       category: { select: { id: true, name: true, slug: true } },
-      _count: {
-        select: {
-          relatedAgencies: true,
-          relatedWorkflows: true,
-          relatedFrom: true,
-        },
-      },
     },
   });
 }

@@ -11,6 +11,13 @@ import {
   containsForbiddenScopeTerm,
   isApprovedProductSlug,
 } from "../../constants/product-scope";
+import { createTtlCache } from "../../lib/ttl-cache";
+
+const adminProductsListCache = createTtlCache<{ products: unknown[] }>(45_000);
+
+export function bustProductsListCache() {
+  adminProductsListCache.clear();
+}
 
 function slugify(input: string): string {
   return input
@@ -209,6 +216,11 @@ productsRouter.get("/", authenticate, async (req: AuthRequest, res, next) => {
   try {
     const isAdmin = req.user!.role === "ADMIN";
     if (isAdmin) {
+      const cached = adminProductsListCache.get();
+      if (cached) {
+        res.setHeader("Cache-Control", "private, max-age=15");
+        return res.json(ok(cached));
+      }
       const products = await prisma.product.findMany({
         where: {
           slug: { in: [...APPROVED_PRODUCT_SLUGS] },
@@ -235,7 +247,10 @@ productsRouter.get("/", authenticate, async (req: AuthRequest, res, next) => {
           },
         },
       });
-      return res.json(ok({ products: products.map(mapProductCard) }));
+      const payload = { products: products.map(mapProductCard) };
+      adminProductsListCache.set(payload);
+      res.setHeader("Cache-Control", "private, max-age=15");
+      return res.json(ok(payload));
     }
 
     const { loadEntitledProductAccess } = await import("../access/entitlements");
@@ -570,6 +585,7 @@ productsRouter.patch(
         where: { id: req.params.id },
         data: req.body,
       });
+      bustProductsListCache();
       if (
         req.body.priceCents !== undefined &&
         req.body.priceCents !== before.priceCents

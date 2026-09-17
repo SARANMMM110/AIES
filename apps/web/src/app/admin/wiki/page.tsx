@@ -9,6 +9,12 @@ import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch, ApiClientError } from "@/lib/api";
+import {
+  ADMIN_CACHE_KEYS,
+  clearAdminCache,
+  fetchAdminCached,
+  readAdminCache,
+} from "@/lib/admin-list-cache";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
 type ArticleRow = {
@@ -19,15 +25,18 @@ type ArticleRow = {
   displayOrder: number;
   updatedAt: string;
   category: { id: string; name: string; slug: string };
-  _count: { relatedAgencies: number; relatedWorkflows: number; relatedFrom: number };
 };
 
 type Category = { id: string; name: string; slug: string };
 
+type WikiListPayload = { articles: ArticleRow[]; categories: Category[] };
+
 export default function AdminWikiPage() {
-  const [articles, setArticles] = useState<ArticleRow[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = readAdminCache<WikiListPayload>(ADMIN_CACHE_KEYS.wikiArticles);
+  const [articles, setArticles] = useState<ArticleRow[]>(cached?.articles ?? []);
+  const [categories, setCategories] = useState<Category[]>(cached?.categories ?? []);
+  const [loading, setLoading] = useState(!cached);
+  const [refreshing, setRefreshing] = useState(false);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [appliedKey, setAppliedKey] = useState("::");
@@ -35,21 +44,40 @@ export default function AdminWikiPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const pager = useClientPagination(articles, { resetKey: appliedKey });
 
-  async function load() {
-    setLoading(true);
+  async function load(opts?: { force?: boolean; filtered?: boolean }) {
+    const filtered = Boolean(q.trim() || status);
+    const useCache = !opts?.force && !filtered;
+    if (!cached && !articles.length) setLoading(true);
+    else setRefreshing(true);
     try {
-      const params = new URLSearchParams();
-      if (q.trim()) params.set("q", q.trim());
-      if (status) params.set("status", status);
-      const data = await apiFetch<{ articles: ArticleRow[]; categories: Category[] }>(
-        `/api/wiki/admin/articles?${params}`
-      );
-      setArticles(data.articles);
-      setCategories(data.categories);
+      if (filtered) {
+        const params = new URLSearchParams();
+        if (q.trim()) params.set("q", q.trim());
+        if (status) params.set("status", status);
+        const data = await apiFetch<WikiListPayload>(`/api/wiki/admin/articles?${params}`);
+        setArticles(data.articles);
+        setCategories(data.categories);
+      } else {
+        const { data } = await fetchAdminCached<WikiListPayload>(
+          ADMIN_CACHE_KEYS.wikiArticles,
+          "/api/wiki/admin/articles",
+          {
+            force: opts?.force,
+            onFresh: (fresh) => {
+              setArticles(fresh.articles);
+              setCategories(fresh.categories);
+              setRefreshing(false);
+            },
+          }
+        );
+        setArticles(data.articles);
+        setCategories(data.categories);
+      }
       setAppliedKey(`${q.trim()}::${status}`);
       setError(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -57,7 +85,9 @@ export default function AdminWikiPage() {
     void load().catch((err) => {
       setError(err instanceof Error ? err.message : "Failed to load wiki admin");
       setLoading(false);
+      setRefreshing(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial hydrate + background refresh
   }, []);
 
   async function setArticleStatus(id: string, action: "publish" | "unpublish" | "archive") {
@@ -65,7 +95,8 @@ export default function AdminWikiPage() {
     setError(null);
     try {
       await apiFetch(`/api/wiki/admin/articles/${id}/${action}`, { method: "POST" });
-      await load();
+      clearAdminCache(ADMIN_CACHE_KEYS.wikiArticles);
+      await load({ force: true });
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Update failed");
     } finally {
@@ -94,7 +125,11 @@ export default function AdminWikiPage() {
               <option value="DRAFT">Draft</option>
               <option value="ARCHIVED">Archived</option>
             </select>
-            <button className="btn ghost" type="button" onClick={() => void load()}>
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() => void load({ force: true }).catch((err) => setError(err.message))}
+            >
               Apply
             </button>
             <Link className="btn" href="/admin/wiki/new">
@@ -104,7 +139,9 @@ export default function AdminWikiPage() {
           <p className="muted" style={{ margin: 0 }}>
             {loading
               ? "Loading…"
-              : `${categories.length} categories · ${articles.length} articles shown`}
+              : `${categories.length} categories · ${articles.length} articles shown${
+                  refreshing ? " · refreshing…" : ""
+                }`}
           </p>
           {error ? <p style={{ color: "var(--danger)", margin: 0 }}>{error}</p> : null}
         </div>
@@ -125,7 +162,6 @@ export default function AdminWikiPage() {
                   <th align="left">Title</th>
                   <th align="left">Category</th>
                   <th align="left">Status</th>
-                  <th align="left">Links</th>
                   <th align="left">Actions</th>
                 </tr>
               </thead>
@@ -140,10 +176,6 @@ export default function AdminWikiPage() {
                     </td>
                     <td>{a.category.name}</td>
                     <td>{a.status}</td>
-                    <td className="muted">
-                      A{a._count.relatedAgencies} · W{a._count.relatedWorkflows} · R
-                      {a._count.relatedFrom}
-                    </td>
                     <td>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         <Link className="btn ghost" href={`/admin/wiki/${a.id}`}>

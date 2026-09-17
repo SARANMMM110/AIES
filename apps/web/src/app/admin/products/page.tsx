@@ -9,6 +9,12 @@ import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch, ApiClientError } from "@/lib/api";
+import {
+  ADMIN_CACHE_KEYS,
+  clearAdminCache,
+  fetchAdminCached,
+  readAdminCache,
+} from "@/lib/admin-list-cache";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
 interface ProductRow {
@@ -21,9 +27,12 @@ interface ProductRow {
   workflowCount?: number;
 }
 
+type ProductsPayload = { products: ProductRow[] };
+
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = readAdminCache<ProductsPayload>(ADMIN_CACHE_KEYS.products);
+  const [products, setProducts] = useState<ProductRow[]>(cached?.products ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
@@ -31,20 +40,31 @@ export default function AdminProductsPage() {
   >({});
   const pager = useClientPagination(products);
 
-  async function load() {
-    setLoading(true);
+  function applyProducts(list: ProductRow[]) {
+    setProducts(list);
+    const next: Record<string, { price: string; currency: string; status: string }> = {};
+    for (const p of list) {
+      next[p.id] = {
+        price: p.priceCents == null ? "" : String(p.priceCents / 100),
+        currency: p.currency || "USD",
+        status: p.status,
+      };
+    }
+    setDrafts(next);
+  }
+
+  async function load(force = false) {
+    if (!cached && !products.length) setLoading(true);
     try {
-      const data = await apiFetch<{ products: ProductRow[] }>("/api/products");
-      setProducts(data.products);
-      const next: typeof drafts = {};
-      for (const p of data.products) {
-        next[p.id] = {
-          price: p.priceCents == null ? "" : String(p.priceCents / 100),
-          currency: p.currency || "USD",
-          status: p.status,
-        };
-      }
-      setDrafts(next);
+      const { data } = await fetchAdminCached<ProductsPayload>(
+        ADMIN_CACHE_KEYS.products,
+        "/api/products",
+        {
+          force,
+          onFresh: (fresh) => applyProducts(fresh.products),
+        }
+      );
+      applyProducts(data.products);
       setError(null);
     } finally {
       setLoading(false);
@@ -52,10 +72,12 @@ export default function AdminProductsPage() {
   }
 
   useEffect(() => {
+    if (cached) applyProducts(cached.products);
     void load().catch((err) => {
       setError(err instanceof Error ? err.message : "Failed to load products");
       setLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function save(product: ProductRow) {
@@ -77,7 +99,8 @@ export default function AdminProductsPage() {
           status: draft.status,
         }),
       });
-      await load();
+      clearAdminCache(ADMIN_CACHE_KEYS.products);
+      await load(true);
     } catch (err) {
       setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Save failed");
     } finally {

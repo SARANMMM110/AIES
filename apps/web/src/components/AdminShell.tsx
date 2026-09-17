@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ADMIN_CACHE_KEYS, fetchAdminCached } from "@/lib/admin-list-cache";
 import "./admin-shell.css";
 
 const ADMIN_LINKS = [
@@ -28,6 +29,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/admin";
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+
+  // Warm list caches so Catalog pages paint instantly on navigation.
+  useEffect(() => {
+    if (!user) return;
+    void Promise.allSettled([
+      fetchAdminCached(ADMIN_CACHE_KEYS.products, "/api/products"),
+      fetchAdminCached(ADMIN_CACHE_KEYS.bundles, "/api/bundles"),
+      fetchAdminCached(ADMIN_CACHE_KEYS.wikiArticles, "/api/wiki/admin/articles"),
+    ]);
+  }, [user]);
 
   async function handleLogout() {
     await logout();

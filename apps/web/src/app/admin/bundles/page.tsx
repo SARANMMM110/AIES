@@ -11,6 +11,12 @@ import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import { formatMoney } from "@/lib/purchase";
+import {
+  ADMIN_CACHE_KEYS,
+  clearAdminCache,
+  fetchAdminCached,
+  readAdminCache,
+} from "@/lib/admin-list-cache";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
 type BundleRow = {
@@ -23,17 +29,27 @@ type BundleRow = {
   productCount: number;
 };
 
+type BundlesPayload = { bundles: BundleRow[] };
+
 export default function AdminBundlesPage() {
-  const [bundles, setBundles] = useState<BundleRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = readAdminCache<BundlesPayload>(ADMIN_CACHE_KEYS.bundles);
+  const [bundles, setBundles] = useState<BundleRow[]>(cached?.bundles ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const pager = useClientPagination(bundles);
 
-  async function load() {
-    setLoading(true);
+  async function load(force = false) {
+    if (!cached && !bundles.length) setLoading(true);
     try {
-      const data = await apiFetch<{ bundles: BundleRow[] }>("/api/bundles");
+      const { data } = await fetchAdminCached<BundlesPayload>(
+        ADMIN_CACHE_KEYS.bundles,
+        "/api/bundles",
+        {
+          force,
+          onFresh: (fresh) => setBundles(fresh.bundles),
+        }
+      );
       setBundles(data.bundles);
       setError(null);
     } finally {
@@ -46,6 +62,7 @@ export default function AdminBundlesPage() {
       setError(err instanceof Error ? err.message : "Failed to load bundles");
       setLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function publish(id: string, on: boolean) {
@@ -53,7 +70,8 @@ export default function AdminBundlesPage() {
     setError(null);
     try {
       await apiFetch(`/api/bundles/${id}/${on ? "publish" : "unpublish"}`, { method: "POST" });
-      await load();
+      clearAdminCache(ADMIN_CACHE_KEYS.bundles);
+      await load(true);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Update failed");
     } finally {
@@ -79,7 +97,8 @@ export default function AdminBundlesPage() {
     setBusyId(id);
     try {
       await apiFetch(`/api/bundles/${id}`, { method: "DELETE" });
-      await load();
+      clearAdminCache(ADMIN_CACHE_KEYS.bundles);
+      await load(true);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Archive failed");
     } finally {

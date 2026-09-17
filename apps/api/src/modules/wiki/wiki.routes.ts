@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
+import { prisma } from "@aes/database";
 import { authenticate, requireAdmin, type AuthRequest } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { ok } from "../../utils/response";
 import { writeAuditLog } from "../audit/audit";
 import { rateLimit } from "../../middleware/rateLimit";
 import { env } from "../../config/env";
+import { createTtlCache } from "../../lib/ttl-cache";
 import {
   adminCreateArticle,
   adminListAll,
@@ -31,6 +33,15 @@ import {
 export const wikiRouter = Router();
 
 wikiRouter.use(authenticate);
+
+const adminWikiListCache = createTtlCache<{
+  articles: Awaited<ReturnType<typeof adminListAll>>;
+  categories: Array<{ id: string; name: string; slug: string }>;
+}>(45_000);
+
+function bustAdminWikiCache() {
+  adminWikiListCache.clear();
+}
 
 const contentSchema = z.object({
   whatThisMeans: z.string().optional(),
@@ -255,11 +266,29 @@ wikiRouter.get("/admin/articles", requireAdmin, async (req: AuthRequest, res, ne
         : undefined;
     const categoryId =
       typeof req.query.categoryId === "string" ? req.query.categoryId : undefined;
+
+    const unfiltered = !q && !status && !categoryId;
+    if (unfiltered) {
+      const cached = adminWikiListCache.get();
+      if (cached) {
+        res.setHeader("Cache-Control", "private, max-age=15");
+        res.json(ok(cached));
+        return;
+      }
+    }
+
     const [articles, categories] = await Promise.all([
       adminListAll({ q, status, categoryId }),
-      listCategories(true),
+      // Admin filter dropdown only needs id/name/slug — skip article counts.
+      prisma.wikiCategory.findMany({
+        orderBy: { displayOrder: "asc" },
+        select: { id: true, name: true, slug: true },
+      }),
     ]);
-    res.json(ok({ articles, categories }));
+    const payload = { articles, categories };
+    if (unfiltered) adminWikiListCache.set(payload);
+    res.setHeader("Cache-Control", "private, max-age=15");
+    res.json(ok(payload));
   } catch (err) {
     next(err);
   }
@@ -296,6 +325,7 @@ wikiRouter.post(
   async (req: AuthRequest, res, next) => {
     try {
       const article = await adminCreateArticle(req.body);
+      bustAdminWikiCache();
       await writeAuditLog({
         actorId: req.user!.id,
         actorEmail: req.user!.email,
@@ -333,6 +363,7 @@ wikiRouter.patch(
   async (req: AuthRequest, res, next) => {
     try {
       const article = await adminUpdateArticle(req.params.id, req.body);
+      bustAdminWikiCache();
       await writeAuditLog({
         actorId: req.user!.id,
         actorEmail: req.user!.email,
@@ -354,6 +385,7 @@ wikiRouter.post(
   async (req: AuthRequest, res, next) => {
     try {
       const article = await adminSetStatus(req.params.id, "PUBLISHED");
+      bustAdminWikiCache();
       await writeAuditLog({
         actorId: req.user!.id,
         actorEmail: req.user!.email,
@@ -374,6 +406,7 @@ wikiRouter.post(
   async (req: AuthRequest, res, next) => {
     try {
       const article = await adminSetStatus(req.params.id, "DRAFT");
+      bustAdminWikiCache();
       await writeAuditLog({
         actorId: req.user!.id,
         actorEmail: req.user!.email,
@@ -394,6 +427,7 @@ wikiRouter.post(
   async (req: AuthRequest, res, next) => {
     try {
       const article = await adminSetStatus(req.params.id, "ARCHIVED");
+      bustAdminWikiCache();
       await writeAuditLog({
         actorId: req.user!.id,
         actorEmail: req.user!.email,

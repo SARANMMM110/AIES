@@ -7,6 +7,7 @@ import { AppError, assertFound } from "../../utils/errors";
 import { ok } from "../../utils/response";
 import { APPROVED_PRODUCT_SLUGS } from "../../constants/product-scope";
 import { writeAuditLog } from "../audit/audit";
+import { createTtlCache } from "../../lib/ttl-cache";
 
 function slugify(input: string): string {
   return input
@@ -87,6 +88,12 @@ function serializeBundle(
 
 export const bundlesRouter = Router();
 
+const adminBundlesListCache = createTtlCache<{ bundles: unknown[] }>(45_000);
+
+export function bustBundlesListCache() {
+  adminBundlesListCache.clear();
+}
+
 const createBundleSchema = z.object({
   name: z.string().min(1).max(200),
   slug: z
@@ -113,34 +120,43 @@ const updateBundleSchema = createBundleSchema.partial().extend({
 bundlesRouter.get("/", authenticate, async (req, res, next) => {
   try {
     const isAdmin = (req as AuthRequest).user?.role === "ADMIN";
+    if (isAdmin) {
+      const cached = adminBundlesListCache.get();
+      if (cached) {
+        res.setHeader("Cache-Control", "private, max-age=15");
+        res.json(ok(cached));
+        return;
+      }
+    }
     // List view only needs counts — skip nested product payloads (slow over pooler).
     const bundles = await prisma.bundle.findMany({
       where: isAdmin ? undefined : { status: "ACTIVE" },
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
       include: { _count: { select: { items: true } } },
     });
-    res.json(
-      ok({
-        bundles: bundles.map((bundle) => ({
-          id: bundle.id,
-          name: bundle.name,
-          slug: bundle.slug,
-          description: bundle.description,
-          shortDescription: bundle.shortDescription,
-          status: bundle.status,
-          priceCents: bundle.priceCents,
-          currency: bundle.currency,
-          thumbnailUrl: bundle.thumbnailUrl,
-          icon: bundle.icon,
-          displayOrder: bundle.displayOrder,
-          metadata: bundle.metadata,
-          createdAt: bundle.createdAt,
-          updatedAt: bundle.updatedAt,
-          productCount: bundle._count.items,
-          published: bundle.status === "ACTIVE",
-        })),
-      })
-    );
+    const payload = {
+      bundles: bundles.map((bundle) => ({
+        id: bundle.id,
+        name: bundle.name,
+        slug: bundle.slug,
+        description: bundle.description,
+        shortDescription: bundle.shortDescription,
+        status: bundle.status,
+        priceCents: bundle.priceCents,
+        currency: bundle.currency,
+        thumbnailUrl: bundle.thumbnailUrl,
+        icon: bundle.icon,
+        displayOrder: bundle.displayOrder,
+        metadata: bundle.metadata,
+        createdAt: bundle.createdAt,
+        updatedAt: bundle.updatedAt,
+        productCount: bundle._count.items,
+        published: bundle.status === "ACTIVE",
+      })),
+    };
+    if (isAdmin) adminBundlesListCache.set(payload);
+    res.setHeader("Cache-Control", "private, max-age=15");
+    res.json(ok(payload));
   } catch (err) {
     next(err);
   }
@@ -219,6 +235,7 @@ bundlesRouter.post(
         metadata: { slug: bundle.slug, productIds },
       });
 
+      bustBundlesListCache();
       res.status(201).json(ok({ bundle: serializeBundle(bundle) }));
     } catch (err) {
       next(err);
@@ -306,6 +323,7 @@ bundlesRouter.put(
         metadata: { slug: bundle.slug, status: bundle.status },
       });
 
+      bustBundlesListCache();
       res.json(ok({ bundle: serializeBundle(bundle) }));
     } catch (err) {
       next(err);
@@ -338,6 +356,7 @@ bundlesRouter.post("/:id/publish", authenticate, requireAdmin, async (req: AuthR
       entityType: "Bundle",
       entityId: bundle.id,
     });
+    bustBundlesListCache();
     res.json(ok({ bundle: serializeBundle(bundle) }));
   } catch (err) {
     next(err);
@@ -360,6 +379,7 @@ bundlesRouter.post("/:id/unpublish", authenticate, requireAdmin, async (req: Aut
       entityType: "Bundle",
       entityId: bundle.id,
     });
+    bustBundlesListCache();
     res.json(ok({ bundle: serializeBundle(bundle) }));
   } catch (err) {
     next(err);
@@ -408,6 +428,7 @@ bundlesRouter.post("/:id/duplicate", authenticate, requireAdmin, async (req: Aut
       entityId: bundle.id,
       metadata: { from: existing.id },
     });
+    bustBundlesListCache();
     res.status(201).json(ok({ bundle: serializeBundle(bundle) }));
   } catch (err) {
     next(err);
@@ -431,6 +452,7 @@ bundlesRouter.delete("/:id", authenticate, requireAdmin, async (req: AuthRequest
       entityType: "Bundle",
       entityId: bundle.id,
     });
+    bustBundlesListCache();
     res.json(ok({ bundle: serializeBundle(bundle), message: "Bundle archived" }));
   } catch (err) {
     next(err);
@@ -468,6 +490,7 @@ bundlesRouter.put(
         entityId: bundle.id,
         metadata: { priceCents: body.priceCents, currency: bundle.currency },
       });
+      bustBundlesListCache();
       res.json(ok({ bundle: serializeBundle(bundle) }));
     } catch (err) {
       next(err);
