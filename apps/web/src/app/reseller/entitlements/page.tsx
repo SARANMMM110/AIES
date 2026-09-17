@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { ResellerGate } from "@/components/ResellerGate";
 import { ResellerNav } from "@/components/ResellerNav";
+import { ToastBanner, useToast } from "@/components/Toast";
 import { apiFetch, getToken, getClientApiBase } from "@/lib/api";
 import "../reseller.css";
 
@@ -39,34 +40,103 @@ async function download(id: string, title: string, kind: "sales" | "agency") {
 }
 
 export default function EntitlementsPage() {
+  const { toast, showToast } = useToast();
   const [rows, setRows] = useState<Agency[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [wpTarget, setWpTarget] = useState<Agency | null>(null);
+  const [wpSiteUrl, setWpSiteUrl] = useState("");
+  const [wpUser, setWpUser] = useState("");
+  const [wpPassword, setWpPassword] = useState("");
+  const [wpBusy, setWpBusy] = useState(false);
+  const [wpError, setWpError] = useState<string | null>(null);
 
   async function load() {
     setRows(await apiFetch<Agency[]>("/api/reseller/agencies"));
   }
 
   useEffect(() => {
-    void load().catch((err: Error) => setError(err.message));
+    void load().catch((err: Error) => {
+      setError(err.message);
+      showToast(err.message, "error");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function openWordPress(row: Agency) {
+    setWpTarget(row);
+    setWpSiteUrl(row.wordpressUrl || "");
+    setWpUser("");
+    setWpPassword("");
+    setWpError(null);
+  }
+
+  function closeWordPress() {
+    if (wpBusy) return;
+    setWpTarget(null);
+    setWpPassword("");
+    setWpError(null);
+  }
+
+  async function publishWordPress(e: FormEvent) {
+    e.preventDefault();
+    if (!wpTarget) return;
+    setWpBusy(true);
+    setWpError(null);
+    setError(null);
+    try {
+      const result = await apiFetch<Agency>(`/api/reseller/agencies/${wpTarget.id}/wordpress`, {
+        method: "POST",
+        body: JSON.stringify({
+          siteUrl: wpSiteUrl.trim(),
+          username: wpUser.trim(),
+          appPassword: wpPassword,
+        }),
+      });
+      setRows((current) => current.map((row) => (row.id === result.id ? { ...row, ...result } : row)));
+      showToast(
+        result.wordpressPageUrl ? "Published to WordPress." : "WordPress page created.",
+        "success"
+      );
+      setWpTarget(null);
+      setWpPassword("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "WordPress publish failed";
+      setWpError(message);
+      showToast(message, "error");
+    } finally {
+      setWpBusy(false);
+    }
+  }
 
   async function remove(id: string) {
     if (!window.confirm("Delete this saved agency? Inquiries for it will be removed.")) return;
     setError(null);
     try {
       await apiFetch(`/api/reseller/agencies/${id}`, { method: "DELETE" });
-      setNotice("Agency deleted.");
+      showToast("Agency deleted.", "success");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete");
+      const message = err instanceof Error ? err.message : "Could not delete";
+      setError(message);
+      showToast(message, "error");
     }
   }
 
-  async function copyLink(path: string) {
-    const url = `${window.location.origin}${path}`;
-    await navigator.clipboard.writeText(url);
-    setNotice("Sales page link copied. Paste it into WordPress, or publish directly from Branding.");
+  async function runDownload(id: string, title: string, kind: "sales" | "agency") {
+    const key = `${id}:${kind}`;
+    setError(null);
+    setDownloading(key);
+    try {
+      await download(id, title, kind);
+      showToast(kind === "sales" ? "Sales page downloaded." : "Agency file downloaded.", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Download failed";
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setDownloading(null);
+    }
   }
 
   return (
@@ -75,30 +145,133 @@ export default function EntitlementsPage() {
         <PageHeader
           title="Saved agencies"
           subtitle="Agencies you saved from branding. Link, edit, download, or delete them here."
-          actions={<Link className="btn lime" href="/reseller/branding">New agency</Link>}
+          actions={
+            <Link className="btn lime" href="/reseller/branding">
+              New agency
+            </Link>
+          }
         />
         <ResellerGate>
           <ResellerNav />
           {error ? <p className="error">{error}</p> : null}
-          {notice ? <p className="success">{notice}</p> : null}
-          {rows.length === 0 ? <section className="reseller-card"><p className="reseller-meta">No saved agencies yet. Create one on the branding page.</p></section> : null}
+          <ToastBanner toast={toast} />
+          {rows.length === 0 ? (
+            <section className="reseller-card">
+              <p className="reseller-meta">No saved agencies yet. Create one on the branding page.</p>
+            </section>
+          ) : null}
           <div className="reseller-offer-grid">
             {rows.map((row) => (
               <article className="reseller-card" key={row.id}>
-                <p className="reseller-kicker">{row.published ? "Published" : "Draft"} · {row.product.name}</p>
+                <p className="reseller-kicker">
+                  {row.published ? "Published" : "Draft"} · {row.product.name}
+                </p>
                 <h2>{row.title}</h2>
-                <p className="reseller-meta">{row.offer ? `Offer: ${row.offer.title}` : "No offer attached"}</p>
+                <p className="reseller-meta">
+                  {row.offer ? `Offer: ${row.offer.title}` : "No offer attached"}
+                </p>
                 <div className="reseller-actions">
-                  <button className="btn btn-sm" type="button" onClick={() => void copyLink(row.publicPath)}>Link to WordPress</button>
-                  {row.wordpressPageUrl ? <a className="btn ghost btn-sm" href={row.wordpressPageUrl} target="_blank" rel="noreferrer">Open WordPress page</a> : null}
-                  <Link className="btn ghost btn-sm" href={`/reseller/branding?id=${row.id}`}>Edit</Link>
-                  <button className="btn ghost btn-sm" type="button" onClick={() => void download(row.id, row.title, "sales").catch((err: Error) => setError(err.message))}>Download sales</button>
-                  <button className="btn ghost btn-sm" type="button" onClick={() => void download(row.id, row.title, "agency").catch((err: Error) => setError(err.message))}>Download agency</button>
-                  <button className="btn ghost btn-sm" type="button" onClick={() => void remove(row.id)}>Delete</button>
+                  <button className="btn btn-sm" type="button" onClick={() => openWordPress(row)}>
+                    Link to WordPress
+                  </button>
+                  {row.wordpressPageUrl ? (
+                    <a
+                      className="btn ghost btn-sm"
+                      href={row.wordpressPageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open WordPress page
+                    </a>
+                  ) : null}
+                  <Link className="btn ghost btn-sm" href={`/reseller/branding?id=${row.id}`}>
+                    Edit
+                  </Link>
+                  <button
+                    className="btn ghost btn-sm"
+                    type="button"
+                    disabled={downloading !== null}
+                    onClick={() => void runDownload(row.id, row.title, "sales")}
+                  >
+                    {downloading === `${row.id}:sales` ? "Downloading…" : "Download sales"}
+                  </button>
+                  <button
+                    className="btn ghost btn-sm"
+                    type="button"
+                    disabled={downloading !== null}
+                    onClick={() => void runDownload(row.id, row.title, "agency")}
+                  >
+                    {downloading === `${row.id}:agency` ? "Downloading…" : "Download agency"}
+                  </button>
+                  <button className="btn ghost btn-sm" type="button" onClick={() => void remove(row.id)}>
+                    Delete
+                  </button>
                 </div>
               </article>
             ))}
           </div>
+
+          {wpTarget ? (
+            <div
+              className="reseller-modal-backdrop"
+              role="presentation"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeWordPress();
+              }}
+            >
+              <form
+                className="reseller-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="wp-modal-title"
+                onSubmit={(e) => void publishWordPress(e)}
+              >
+                <h3 id="wp-modal-title">Publish to WordPress</h3>
+                <p>
+                  Publish <strong>{wpTarget.title}</strong> to your WordPress site. Use an Application
+                  Password from WordPress → Users → Profile. It is sent once and not stored.
+                </p>
+                <label>
+                  WordPress site link
+                  <input
+                    value={wpSiteUrl}
+                    onChange={(e) => setWpSiteUrl(e.target.value)}
+                    placeholder="https://yoursite.com"
+                    required
+                    autoFocus
+                  />
+                </label>
+                <label>
+                  Username
+                  <input
+                    value={wpUser}
+                    onChange={(e) => setWpUser(e.target.value)}
+                    autoComplete="off"
+                    required
+                  />
+                </label>
+                <label>
+                  Application password
+                  <input
+                    type="password"
+                    value={wpPassword}
+                    onChange={(e) => setWpPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+                {wpError ? <p className="error">{wpError}</p> : null}
+                <div className="reseller-modal-actions">
+                  <button className="btn ghost" type="button" disabled={wpBusy} onClick={closeWordPress}>
+                    Cancel
+                  </button>
+                  <button className="btn lime" type="submit" disabled={wpBusy}>
+                    {wpBusy ? "Publishing…" : "Publish"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
         </ResellerGate>
       </AppShell>
     </Protected>

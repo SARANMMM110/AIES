@@ -8,7 +8,7 @@ import { env } from "../../config/env";
 import { AppError } from "../../utils/errors";
 import { buildAgencyOneHtml } from "../products/agency-one-export";
 import { buildPremiumSalesPageHtml } from "../products/premium-sales-export";
-import { loadResellerRights } from "./entitlements";
+import { loadResellerRights, readCoveredProductIds } from "./entitlements";
 import { publicBrandFor, readOwnedAsset, whiteLabelAllowed } from "./branding";
 
 export type AgencyInput = {
@@ -217,54 +217,106 @@ export async function deleteOwnedAgency(userId: string, id: string) {
   await prisma.resellerAgencyProfile.delete({ where: { id } });
 }
 
-async function ownedProfile(userId: string, id: string) {
+async function ownedProfile(userId: string, id: string, mode: "full" | "sales" | "agency" = "full") {
+  const salesSelect = {
+    id: true,
+    name: true,
+    slug: true,
+    description: true,
+    shortDescription: true,
+    tagline: true,
+    configuration: true,
+    resources: {
+      where: { type: "SERVICE" as const, isPublished: true },
+      select: { id: true, type: true, title: true },
+      orderBy: { sortOrder: "asc" as const },
+      take: 24,
+    },
+    workflows: {
+      where: { isActive: true },
+      select: { id: true },
+      take: 500,
+    },
+  };
+
+  const agencySelect = {
+    id: true,
+    name: true,
+    slug: true,
+    description: true,
+    shortDescription: true,
+    tagline: true,
+    configuration: true,
+    resources: {
+      where: { type: "SERVICE" as const, isPublished: true },
+      select: { id: true, type: true, title: true },
+      orderBy: { sortOrder: "asc" as const },
+    },
+    workflows: {
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        purpose: true,
+        serviceResourceId: true,
+        aiInstructionTemplate: true,
+        outputDefinition: true,
+        nextAction: true,
+      },
+      orderBy: [{ displayOrder: "asc" as const }, { name: "asc" as const }],
+    },
+  };
+
+  const fullSelect = {
+    id: true,
+    name: true,
+    slug: true,
+    description: true,
+    shortDescription: true,
+    tagline: true,
+    icon: true,
+    configuration: true,
+    resources: {
+      where: { isPublished: true },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        slug: true,
+        description: true,
+        content: true,
+        sortOrder: true,
+      },
+      orderBy: { sortOrder: "asc" as const },
+    },
+    workflows: {
+      where: { isActive: true },
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        description: true,
+        purpose: true,
+        serviceResourceId: true,
+        displayOrder: true,
+        inputs: true,
+        aiInstructionTemplate: true,
+        outputDefinition: true,
+        reviewRequirements: true,
+        nextAction: true,
+      },
+      orderBy: [{ displayOrder: "asc" as const }, { name: "asc" as const }],
+    },
+  };
+
+  const productSelect = mode === "sales" ? salesSelect : mode === "agency" ? agencySelect : fullSelect;
+
   const row = await prisma.resellerAgencyProfile.findFirst({
     where: { id, userId },
     include: {
       ...profileInclude,
-      product: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          description: true,
-          shortDescription: true,
-          tagline: true,
-          icon: true,
-          configuration: true,
-          resources: {
-            where: { isPublished: true },
-            select: {
-              id: true,
-              type: true,
-              title: true,
-              slug: true,
-              description: true,
-              content: true,
-              sortOrder: true,
-            },
-            orderBy: { sortOrder: "asc" },
-          },
-          workflows: {
-            where: { isActive: true },
-            select: {
-              id: true,
-              key: true,
-              name: true,
-              description: true,
-              purpose: true,
-              serviceResourceId: true,
-              displayOrder: true,
-              inputs: true,
-              aiInstructionTemplate: true,
-              outputDefinition: true,
-              reviewRequirements: true,
-              nextAction: true,
-            },
-            orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-          },
-        },
-      },
+      product: { select: productSelect },
     },
   });
   if (!row) throw new AppError(404, "Saved agency not found", "NOT_FOUND");
@@ -292,10 +344,18 @@ async function embedLogoDataUrl(userId: string, logoPath: string | null) {
 }
 
 export async function agencyDownloadHtml(userId: string, id: string, kind: "sales" | "agency") {
-  const row = await ownedProfile(userId, id);
-  const rights = await loadResellerRights(userId);
-  const covered = rights.find((item) => item.products.some((product) => product.id === row.productId));
-  if (!covered) {
+  const row = await ownedProfile(userId, id, kind);
+  // Lightweight entitlement check — avoid reloading all rights + covered products.
+  const entitlements = await prisma.resellerEntitlement.findMany({
+    where: { userId, status: "ACTIVE" },
+    select: { productId: true, coveredProductIds: true, policySnapshot: true },
+  });
+  const entitled = entitlements.find(
+    (item) =>
+      item.productId === row.productId ||
+      readCoveredProductIds(item.coveredProductIds).includes(row.productId)
+  );
+  if (!entitled) {
     throw new AppError(403, "This account is not entitled to export this agency", "NOT_ENTITLED");
   }
 
@@ -308,7 +368,7 @@ export async function agencyDownloadHtml(userId: string, id: string, kind: "sale
     row.published = true;
   }
 
-  const branded = covered.policy ? await whiteLabelAllowed({ policySnapshot: covered.policy }) : false;
+  const branded = await whiteLabelAllowed({ policySnapshot: entitled.policySnapshot });
   const globalBrand = branded ? await publicBrandFor(userId, true) : null;
   const accent =
     (branded && (row.primaryColor || globalBrand?.primaryColor)) ||
@@ -329,8 +389,9 @@ export async function agencyDownloadHtml(userId: string, id: string, kind: "sale
       ? globalBrand.faviconUrl.replace(env.API_URL, "").split("?")[0]
       : null
     : null;
-  const logoDataUrl = branded ? await embedLogoDataUrl(userId, logoPath) : null;
-  const faviconDataUrl = branded ? await embedLogoDataUrl(userId, faviconPath) : null;
+  const [logoDataUrl, faviconDataUrl] = branded
+    ? await Promise.all([embedLogoDataUrl(userId, logoPath), embedLogoDataUrl(userId, faviconPath)])
+    : [null, null];
   const supportEmail = branded ? row.supportEmail || globalBrand?.supportEmail || null : null;
   const footerText = branded ? row.footerText || globalBrand?.footerText || null : null;
   const inquiryUrl = `${env.APP_URL}/a/${row.slug}`;
@@ -383,13 +444,13 @@ export async function agencyDownloadHtml(userId: string, id: string, kind: "sale
     services: services.map((s) => ({ id: s.id, title: s.title })),
     workflows: row.product.workflows.map((w) => ({
       id: w.id,
-      name: w.name,
-      description: w.description,
-      purpose: w.purpose,
-      serviceResourceId: w.serviceResourceId,
-      aiInstructionTemplate: w.aiInstructionTemplate,
-      outputDefinition: w.outputDefinition,
-      nextAction: w.nextAction,
+      name: "name" in w ? String(w.name || "") : "",
+      description: "description" in w ? (w.description as string | null) : null,
+      purpose: "purpose" in w ? (w.purpose as string | null) : null,
+      serviceResourceId: "serviceResourceId" in w ? (w.serviceResourceId as string | null) : null,
+      aiInstructionTemplate: "aiInstructionTemplate" in w ? w.aiInstructionTemplate : null,
+      outputDefinition: "outputDefinition" in w ? w.outputDefinition : null,
+      nextAction: "nextAction" in w ? (w.nextAction as string | null) : null,
     })),
   });
   return { filename: `${row.product.slug}-agency.html`, html };
@@ -406,7 +467,8 @@ function isPrivateIp(ip: string) {
 async function assertPublicHttps(raw: string) {
   let url: URL;
   try {
-    url = new URL(raw);
+    // Accept pasted admin/login URLs — we only need the site origin for REST.
+    url = new URL(raw.trim());
   } catch {
     throw new AppError(400, "WordPress link must be a public https URL", "INVALID_URL");
   }
@@ -419,7 +481,50 @@ async function assertPublicHttps(raw: string) {
   if (!addresses.length || addresses.some(isPrivateIp)) {
     throw new AppError(400, "WordPress link must be a public site", "INVALID_URL");
   }
-  return url;
+  return new URL(url.origin);
+}
+
+function wordpressErrorMessage(status: number, payload: unknown): string {
+  if (payload && typeof payload === "object") {
+    const row = payload as Record<string, unknown>;
+    if (typeof row.message === "string" && row.message.trim()) {
+      return row.message.trim();
+    }
+    if (typeof row.code === "string" && row.code.trim()) {
+      return `WordPress error: ${row.code}`;
+    }
+  }
+  if (status === 401 || status === 403) {
+    return "WordPress rejected the username or application password. Create an Application Password in WordPress → Users → Profile.";
+  }
+  if (status === 404) {
+    return "WordPress REST API was not found. Check the site URL and that permalinks are not set to Plain.";
+  }
+  if (status >= 300 && status < 400) {
+    return "WordPress redirected the publish request. Use the final https site URL (often with or without www).";
+  }
+  return `WordPress did not publish the page (HTTP ${status}).`;
+}
+
+function wordpressEmbedContent(title: string, publicUrl: string) {
+  const safeTitle = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+  const safeUrl = publicUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  // Full branded HTML + scripts is often blocked by WordPress security plugins.
+  // Embed the live published sales page instead.
+  return `<!-- wp:html -->
+<div style="max-width:1100px;margin:0 auto;padding:12px 0">
+  <p style="margin:0 0 12px;font:600 15px/1.4 system-ui,sans-serif">
+    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeTitle} — open sales page</a>
+  </p>
+  <iframe
+    src="${safeUrl}"
+    title="${safeTitle}"
+    style="width:100%;min-height:92vh;border:0;border-radius:12px;background:#fff"
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+  ></iframe>
+</div>
+<!-- /wp:html -->`;
 }
 
 export async function publishAgencyToWordPress(
@@ -427,39 +532,88 @@ export async function publishAgencyToWordPress(
   id: string,
   input: { siteUrl?: string; username?: string; appPassword?: string }
 ) {
-  const row = await ownedProfile(userId, id);
+  const row = await ownedProfile(userId, id, "sales");
   const site = await assertPublicHttps(String(input.siteUrl || row.wordpressUrl || ""));
   const username = clean(input.username, 80);
-  const appPassword = clean(input.appPassword, 120);
+  // Application passwords are often copied with spaces — WordPress ignores whitespace.
+  const appPassword = clean(input.appPassword, 120)?.replace(/\s+/g, "") || null;
   if (!username || !appPassword) {
-    throw new AppError(400, "WordPress username and application password are required to publish", "WORDPRESS_AUTH");
+    throw new AppError(
+      400,
+      "WordPress username and application password are required to publish",
+      "WORDPRESS_AUTH"
+    );
   }
-  const downloaded = await agencyDownloadHtml(userId, id, "sales");
+
+  // Public page must be live for the WordPress embed.
+  if (!row.published) {
+    await prisma.resellerAgencyProfile.update({
+      where: { id: row.id },
+      data: { published: true },
+    });
+    row.published = true;
+  }
+
+  const publicUrl = `${env.APP_URL}/a/${row.slug}`;
   const endpoint = new URL("/wp-json/wp/v2/pages", site.origin);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    redirect: "manual",
-    signal: AbortSignal.timeout(12000),
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${username}:${appPassword}`).toString("base64")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      title: row.title,
-      status: "publish",
-      content: downloaded.html,
-    }),
-  });
-  if (response.status >= 300 && response.status < 400) {
-    throw new AppError(400, "WordPress did not accept a direct publish", "WORDPRESS_REJECTED");
+  const auth = Buffer.from(`${username}:${appPassword}`, "utf8").toString("base64");
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      redirect: "follow",
+      signal: AbortSignal.timeout(25000),
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        title: row.title,
+        status: "publish",
+        content: wordpressEmbedContent(row.title, publicUrl),
+      }),
+    });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "network error";
+    throw new AppError(
+      400,
+      `Could not reach WordPress (${reason}). Check the https site URL and that the REST API is enabled.`,
+      "WORDPRESS_UNREACHABLE"
+    );
   }
-  const payload = (await response.json().catch(() => null)) as { link?: string; message?: string } | null;
-  if (!response.ok || !payload?.link) {
-    throw new AppError(400, payload?.message || "WordPress did not publish the page", "WORDPRESS_REJECTED");
+
+  const rawText = await response.text();
+  type WpPagePayload = {
+    id?: number;
+    link?: string;
+    message?: string;
+    code?: string;
+    guid?: { rendered?: string };
+  };
+  let payload: WpPagePayload | null = null;
+  try {
+    payload = rawText ? (JSON.parse(rawText) as WpPagePayload) : null;
+  } catch {
+    payload = null;
   }
+
+  const pageLink =
+    (payload?.link && String(payload.link)) ||
+    (payload?.guid?.rendered && String(payload.guid.rendered)) ||
+    (payload?.id ? `${site.origin}/?page_id=${payload.id}` : null);
+
+  if (!response.ok || !pageLink) {
+    throw new AppError(400, wordpressErrorMessage(response.status, payload), "WORDPRESS_REJECTED", {
+      status: response.status,
+      code: payload?.code ?? null,
+    });
+  }
+
   const saved = await prisma.resellerAgencyProfile.update({
     where: { id: row.id },
-    data: { wordpressUrl: site.origin, wordpressPageUrl: payload.link },
+    data: { wordpressUrl: site.origin, wordpressPageUrl: pageLink, published: true },
     include: profileInclude,
   });
   return saved;

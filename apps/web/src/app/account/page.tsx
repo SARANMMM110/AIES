@@ -5,8 +5,10 @@ import { AppShell } from "@/components/AppShell";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
+import { ToastBanner, useToast } from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, ApiClientError } from "@/lib/api";
+import "@/app/reseller/reseller.css";
 
 type ResaleRow = {
   key: string;
@@ -17,6 +19,7 @@ type ResaleRow = {
 
 export default function AccountPage() {
   const { user, refresh, logout } = useAuth();
+  const { toast, showToast } = useToast();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -31,20 +34,51 @@ export default function AccountPage() {
     setLastName(user.lastName);
     void apiFetch<ResaleRow[]>("/api/reseller/account")
       .then(setResale)
-      .catch((err: Error) => setResaleError(err.message));
+      .catch((err: Error) => {
+        setResaleError(err.message);
+        showToast(err.message, "error");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   async function saveResale(row: ResaleRow, next: { resell: boolean; whiteLabel: boolean }) {
-    setSavingKey(row.key);
+    const previous = { resell: row.resell, whiteLabel: row.whiteLabel };
     setResaleError(null);
+    setSavingKey(row.key);
+    // Optimistic update so the checkbox feels instant
+    setResale((current) => {
+      const nextRows = (current ?? []).map((item) =>
+        item.key === row.key ? { ...item, ...next } : item
+      );
+      if (user) {
+        const can = nextRows.some((item) => item.resell);
+        try {
+          sessionStorage.setItem(`aes_can_resell:${user.id}`, can ? "1" : "0");
+        } catch {
+          /* ignore */
+        }
+        window.dispatchEvent(
+          new CustomEvent("aes:reseller-visibility", {
+            detail: { userId: user.id, canResell: can },
+          })
+        );
+      }
+      return nextRows;
+    });
+
     try {
       const saved = await apiFetch<ResaleRow>("/api/reseller/account", {
         method: "PUT",
         body: JSON.stringify({ key: row.key, ...next }),
       });
+      setResale((current) =>
+        (current ?? []).map((item) => (item.key === saved.key ? { ...item, ...saved } : item))
+      );
+      showToast(saved.resell ? "Resell settings saved." : "Resell turned off.", "success");
+    } catch (err) {
       setResale((current) => {
         const nextRows = (current ?? []).map((item) =>
-          item.key === saved.key ? { ...item, ...saved } : item
+          item.key === row.key ? { ...item, ...previous } : item
         );
         if (user) {
           const can = nextRows.some((item) => item.resell);
@@ -61,8 +95,9 @@ export default function AccountPage() {
         }
         return nextRows;
       });
-    } catch (err) {
-      setResaleError(err instanceof ApiClientError ? err.message : "Could not update resale");
+      const message = err instanceof ApiClientError ? err.message : "Could not update resale";
+      setResaleError(message);
+      showToast(message, "error");
     } finally {
       setSavingKey(null);
     }
@@ -79,8 +114,11 @@ export default function AccountPage() {
       });
       await refresh();
       setMessage("Profile updated.");
+      showToast("Profile saved.", "success");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Update failed");
+      const message = err instanceof ApiClientError ? err.message : "Update failed";
+      setError(message);
+      showToast(message, "error");
     }
   }
 
@@ -91,6 +129,7 @@ export default function AccountPage() {
           title="Account"
           subtitle="Profile, purchases, and the resell or white-label settings for catalog items you bought."
         />
+        <ToastBanner toast={toast} />
         <div className="dash-split">
           <div className="panel" style={{ maxWidth: 520 }}>
             <form className="form" onSubmit={(e) => void onSubmit(e)}>

@@ -278,7 +278,9 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
           status: "ACTIVE",
           OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
         },
-        include: { product: { select: { id: true, name: true, slug: true } } },
+        include: {
+          product: { select: { id: true, name: true, slug: true, priceCents: true, currency: true } },
+        },
         orderBy: { createdAt: "asc" },
       }),
       prisma.bundleAccess.findMany({
@@ -287,7 +289,9 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
           status: "ACTIVE",
           OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
         },
-        include: { bundle: { select: { id: true, name: true, slug: true } } },
+        include: {
+          bundle: { select: { id: true, name: true, slug: true, priceCents: true, currency: true } },
+        },
         orderBy: { createdAt: "asc" },
       }),
     ]);
@@ -308,15 +312,17 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
     for (const access of bundleAccess) {
       if (coveredBundleIds.has(access.bundleId)) continue;
       coveredBundleIds.add(access.bundleId);
+      const amount = access.bundle?.priceCents ?? 0;
+      const currency = access.bundle?.currency || "USD";
       rows.push({
         id: `access-bundle-${access.id}`,
         code: `ACC-${access.id.slice(-8).toUpperCase()}`,
         status: "COMPLETED",
         purchaseType: "BUNDLE",
-        totalAmount: 0,
-        subtotalAmount: 0,
+        totalAmount: amount,
+        subtotalAmount: amount,
         discountAmount: 0,
-        currency: "USD",
+        currency,
         paymentStatus: access.source === "ADMIN_GRANT" ? "ADMIN_GRANT" : "GRANTED",
         paymentNote: "Access granted by AES team",
         paymentProvider: null,
@@ -334,7 +340,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
             id: access.id,
             itemType: "BUNDLE",
             quantity: 1,
-            price: 0,
+            price: amount,
             product: null,
             bundle: access.bundle
               ? { id: access.bundle.id, name: access.bundle.name, slug: access.bundle.slug }
@@ -349,15 +355,17 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
       if (access.bundleId) continue;
       if (coveredProductIds.has(access.productId)) continue;
       coveredProductIds.add(access.productId);
+      const amount = access.product?.priceCents ?? 0;
+      const currency = access.product?.currency || "USD";
       rows.push({
         id: `access-product-${access.id}`,
         code: `ACC-${access.id.slice(-8).toUpperCase()}`,
         status: "COMPLETED",
         purchaseType: "PRODUCT",
-        totalAmount: 0,
-        subtotalAmount: 0,
+        totalAmount: amount,
+        subtotalAmount: amount,
         discountAmount: 0,
-        currency: "USD",
+        currency,
         paymentStatus: access.source === "ADMIN_GRANT" ? "ADMIN_GRANT" : "GRANTED",
         paymentNote: "Access granted by AES team",
         paymentProvider: null,
@@ -375,7 +383,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
             id: access.id,
             itemType: "PRODUCT",
             quantity: 1,
-            price: 0,
+            price: amount,
             product: access.product
               ? { id: access.product.id, name: access.product.name, slug: access.product.slug }
               : { id: access.productId, name: "Agency", slug: null },

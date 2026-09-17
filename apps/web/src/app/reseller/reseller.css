@@ -482,3 +482,103 @@ html[data-theme="dark"] .reseller-form textarea {
     min-width: 640px;
   }
 }
+
+.aes-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 80;
+  transform: translateX(-50%) translateY(1.25rem);
+  padding: 0.75rem 1.2rem;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 650;
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.18));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  max-width: min(92vw, 420px);
+  text-align: center;
+}
+
+.aes-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.aes-toast-success {
+  background: color-mix(in srgb, var(--accent) 88%, #0b1220);
+  color: #102010;
+}
+
+.aes-toast-error {
+  background: #b42318;
+  color: #fff;
+}
+
+.aes-toast-info {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.reseller-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, #0b1220 55%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.reseller-modal {
+  width: min(440px, 100%);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel, var(--surface));
+  box-shadow: var(--shadow-md, 0 16px 40px rgba(0, 0, 0, 0.22));
+  padding: 1.15rem 1.2rem 1.25rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.reseller-modal h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.reseller-modal p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.reseller-modal label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.reseller-modal input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+.reseller-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}

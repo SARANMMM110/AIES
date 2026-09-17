@@ -8,6 +8,7 @@ import { Protected } from "@/components/Protected";
 import { ResellerGate } from "@/components/ResellerGate";
 import { ResellerNav } from "@/components/ResellerNav";
 import { apiFetch, getToken, getClientApiBase } from "@/lib/api";
+import { ToastBanner, useToast } from "@/components/Toast";
 import "../reseller.css";
 
 const API_URL = getClientApiBase();
@@ -82,6 +83,7 @@ function withCacheBust(url: string) {
 function BrandingForm() {
   const search = useSearchParams();
   const editId = search.get("id");
+  const { toast, showToast } = useToast();
   const [products, setProducts] = useState<Choice[]>([]);
   const [offers, setOffers] = useState<Choice[]>([]);
   const [form, setForm] = useState(EMPTY);
@@ -91,6 +93,7 @@ function BrandingForm() {
   const [wpUser, setWpUser] = useState("");
   const [wpPassword, setWpPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState<"sales" | "agency" | null>(null);
   const [uploading, setUploading] = useState<"logo" | "favicon" | null>(null);
   const localPreviewRef = useRef<{ logo?: string; favicon?: string }>({});
 
@@ -193,6 +196,7 @@ function BrandingForm() {
         setForm((prev) => ({ ...prev, logoUrl: remote, logoPath }));
         revokeLocal("logo");
         setNotice("Logo uploaded. Save to apply it to this agency.");
+        showToast("Logo uploaded.", "success");
       } else {
         const result = await apiFetch<{ faviconUrl: string }>("/api/reseller/branding/favicon", {
           method: "POST",
@@ -203,9 +207,12 @@ function BrandingForm() {
         setForm((prev) => ({ ...prev, faviconUrl: remote }));
         revokeLocal("favicon");
         setNotice("Favicon uploaded.");
+        showToast("Favicon uploaded.", "success");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const message = err instanceof Error ? err.message : "Upload failed";
+      setError(message);
+      showToast(message, "error");
       // Keep the local preview so the user still sees what they picked
     } finally {
       setUploading(null);
@@ -233,31 +240,36 @@ function BrandingForm() {
         published: form.published,
       };
       // Keep account-level brand fields in sync for white-label pages.
-      await apiFetch("/api/reseller/branding", {
-        method: "PUT",
-        body: JSON.stringify({
-          brandName: form.brandName,
-          primaryColor: form.primaryColor,
-          secondaryColor: form.secondaryColor,
-          supportEmail: form.supportEmail,
-          supportPhone: form.supportPhone,
-          footerText: form.footerText,
+      const [, result] = await Promise.all([
+        apiFetch("/api/reseller/branding", {
+          method: "PUT",
+          body: JSON.stringify({
+            brandName: form.brandName,
+            primaryColor: form.primaryColor,
+            secondaryColor: form.secondaryColor,
+            supportEmail: form.supportEmail,
+            supportPhone: form.supportPhone,
+            footerText: form.footerText,
+          }),
+        }).catch(() => null),
+        apiFetch<Saved>(saved ? `/api/reseller/agencies/${saved.id}` : "/api/reseller/agencies", {
+          method: saved ? "PUT" : "POST",
+          body: JSON.stringify(body),
         }),
-      }).catch(() => null);
-
-      const result = await apiFetch<Saved>(saved ? `/api/reseller/agencies/${saved.id}` : "/api/reseller/agencies", {
-        method: saved ? "PUT" : "POST",
-        body: JSON.stringify(body),
-      });
+      ]);
       setSaved(result);
       setForm((prev) => ({
         ...prev,
         logoUrl: result.logoUrl ? withCacheBust(result.logoUrl) : prev.logoUrl,
         logoPath: result.logoUrl ? assetPathFromUrl(result.logoUrl) : prev.logoPath,
       }));
-      setNotice(result.published ? "Agency saved and published." : "Agency branding saved.");
+      const msg = result.published ? "Agency saved and published." : "Saved.";
+      setNotice(msg);
+      showToast(msg, "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save agency");
+      const message = err instanceof Error ? err.message : "Could not save agency";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setBusy(false);
     }
@@ -266,21 +278,32 @@ function BrandingForm() {
   async function download(kind: "sales" | "agency") {
     if (!saved) return;
     setError(null);
-    const token = getToken();
-    const res = await fetch(`${API_URL}/api/reseller/agencies/${saved.id}/download?kind=${kind}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) {
-      setError("Download failed");
-      return;
+    setDownloading(kind);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/api/reseller/agencies/${saved.id}/download?kind=${kind}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        setError("Download failed");
+        showToast("Download failed", "error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = kind === "sales" ? `${saved.title}-sales-page.html` : `${saved.title}-agency.html`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast(kind === "sales" ? "Sales page downloaded." : "Agency file downloaded.", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Download failed";
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setDownloading(null);
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = kind === "sales" ? `${saved.title}-sales-page.html` : `${saved.title}-agency.html`;
-    link.click();
-    URL.revokeObjectURL(url);
   }
 
   async function publishWordPress() {
@@ -295,9 +318,15 @@ function BrandingForm() {
       });
       setSaved(result);
       setWpPassword("");
-      setNotice(result.wordpressPageUrl ? `Published to WordPress: ${result.wordpressPageUrl}` : "WordPress page created.");
+      const msg = result.wordpressPageUrl
+        ? `Published to WordPress: ${result.wordpressPageUrl}`
+        : "WordPress page created.";
+      setNotice(msg);
+      showToast("Published to WordPress.", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "WordPress publish failed");
+      const message = err instanceof Error ? err.message : "WordPress publish failed";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setBusy(false);
     }
@@ -314,6 +343,7 @@ function BrandingForm() {
           <ResellerNav />
           {error ? <p className="error">{error}</p> : null}
           {notice ? <p className="success">{notice}</p> : null}
+          <ToastBanner toast={toast} />
           <form className="reseller-layout" onSubmit={(e) => void onSave(e)}>
             <section className="reseller-card reseller-form">
               <h2>Agency</h2>
@@ -488,11 +518,21 @@ function BrandingForm() {
                 tab and email. Downloading a sales page also publishes it for inquiries.
               </p>
               <div className="reseller-actions">
-                <button className="btn" type="button" disabled={!saved} onClick={() => void download("sales")}>
-                  Download sales page
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={!saved || downloading !== null}
+                  onClick={() => void download("sales")}
+                >
+                  {downloading === "sales" ? "Downloading…" : "Download sales page"}
                 </button>
-                <button className="btn ghost" type="button" disabled={!saved} onClick={() => void download("agency")}>
-                  Download agency page
+                <button
+                  className="btn ghost"
+                  type="button"
+                  disabled={!saved || downloading !== null}
+                  onClick={() => void download("agency")}
+                >
+                  {downloading === "agency" ? "Downloading…" : "Download agency page"}
                 </button>
               </div>
               <label>

@@ -272,24 +272,8 @@ export async function syncResellerEntitlementsFromPaidPurchases() {
 }
 
 export async function listAccountResale(userId: string) {
-  const [purchases, accessRows, entitlements] = await Promise.all([
-    prisma.purchase.findMany({
-      where: {
-        userId,
-        refundedAt: null,
-        status: { notIn: ["REFUNDED", "CANCELLED"] },
-        OR: [{ paymentStatus: { in: ["PAID", "SIMULATED"] } }, { status: "COMPLETED" }],
-      },
-      include: {
-        items: {
-          include: {
-            product: { select: { id: true, name: true, slug: true, status: true } },
-            bundle: { select: { id: true, name: true, slug: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
+  // Prefer access tables — loading every purchase+items made Account checkboxes crawl.
+  const [accessRows, bundleAccess, entitlements] = await Promise.all([
     prisma.productAccess.findMany({
       where: {
         userId,
@@ -303,6 +287,16 @@ export async function listAccountResale(userId: string) {
       },
       include: {
         product: { select: { id: true, name: true, slug: true, status: true } },
+      },
+    }),
+    prisma.bundleAccess.findMany({
+      where: {
+        userId,
+        status: "ACTIVE",
+        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+      },
+      include: {
+        bundle: { select: { id: true, name: true, slug: true } },
       },
     }),
     prisma.resellerEntitlement.findMany({ where: { userId } }),
@@ -337,43 +331,125 @@ export async function listAccountResale(userId: string) {
     });
   }
 
-  for (const purchase of purchases) {
-    for (const item of purchase.items) {
-      if (item.itemType === "PRODUCT" && item.product) {
-        pushProduct(item.product);
-      }
-      if (item.itemType === "BUNDLE" && item.bundle) {
-        const scope: ResellerScope = item.bundle.slug === COMPLETE_SUITE_SLUG ? "COMPLETE_SUITE" : "BUNDLE";
-        const key = entitlementKey(userId, scope, scope === "COMPLETE_SUITE" ? null : item.bundle.id);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const existing = byKey.get(key);
-        rows.push({
-          key,
-          scope,
-          productId: null,
-          bundleId: item.bundle.id,
-          name: item.bundle.name,
-          resell: existing?.status === "ACTIVE",
-          whiteLabel: readPolicySnapshot(existing?.policySnapshot)?.allowBranding === true,
-        });
-      }
-    }
-  }
-
   for (const access of accessRows) {
     pushProduct(access.product);
   }
 
+  for (const access of bundleAccess) {
+    if (!access.bundle) continue;
+    const scope: ResellerScope = access.bundle.slug === COMPLETE_SUITE_SLUG ? "COMPLETE_SUITE" : "BUNDLE";
+    const key = entitlementKey(userId, scope, scope === "COMPLETE_SUITE" ? null : access.bundle.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const existing = byKey.get(key);
+    rows.push({
+      key,
+      scope,
+      productId: null,
+      bundleId: access.bundle.id,
+      name: access.bundle.name,
+      resell: existing?.status === "ACTIVE",
+      whiteLabel: readPolicySnapshot(existing?.policySnapshot)?.allowBranding === true,
+    });
+  }
+
   return rows;
+}
+
+async function resolveOwnedTarget(
+  userId: string,
+  key: string
+): Promise<{
+  key: string;
+  scope: ResellerScope;
+  productId: string | null;
+  bundleId: string | null;
+  name: string;
+} | null> {
+  if (!key.startsWith(`${userId}:`)) return null;
+  const rest = key.slice(userId.length + 1);
+
+  if (rest === "COMPLETE_SUITE") {
+    const suite = await prisma.bundle.findFirst({
+      where: { slug: COMPLETE_SUITE_SLUG },
+      select: { id: true, name: true },
+    });
+    if (!suite) return null;
+    const owned = await prisma.bundleAccess.findFirst({
+      where: {
+        userId,
+        bundleId: suite.id,
+        status: "ACTIVE",
+        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+      },
+      select: { id: true },
+    });
+    if (!owned) return null;
+    return {
+      key,
+      scope: "COMPLETE_SUITE",
+      productId: null,
+      bundleId: suite.id,
+      name: suite.name,
+    };
+  }
+
+  if (rest.startsWith("PRODUCT:")) {
+    const productId = rest.slice("PRODUCT:".length);
+    if (!productId) return null;
+    const access = await prisma.productAccess.findFirst({
+      where: {
+        userId,
+        productId,
+        status: "ACTIVE",
+        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        product: {
+          status: "PUBLISHED",
+          slug: { in: [...APPROVED_PRODUCT_SLUGS] },
+        },
+      },
+      include: { product: { select: { id: true, name: true } } },
+    });
+    if (!access?.product) return null;
+    return {
+      key,
+      scope: "PRODUCT",
+      productId: access.product.id,
+      bundleId: null,
+      name: access.product.name,
+    };
+  }
+
+  if (rest.startsWith("BUNDLE:")) {
+    const bundleId = rest.slice("BUNDLE:".length);
+    if (!bundleId) return null;
+    const access = await prisma.bundleAccess.findFirst({
+      where: {
+        userId,
+        bundleId,
+        status: "ACTIVE",
+        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+      },
+      include: { bundle: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!access?.bundle || access.bundle.slug === COMPLETE_SUITE_SLUG) return null;
+    return {
+      key,
+      scope: "BUNDLE",
+      productId: null,
+      bundleId: access.bundle.id,
+      name: access.bundle.name,
+    };
+  }
+
+  return null;
 }
 
 export async function setAccountResale(
   userId: string,
   input: { key: string; resell: boolean; whiteLabel: boolean }
 ) {
-  const owned = await listAccountResale(userId);
-  const target = owned.find((row) => row.key === input.key);
+  const target = await resolveOwnedTarget(userId, String(input.key || ""));
   if (!target) {
     throw new AppError(403, "You can only resell agencies you own", "RESELLER_SCOPE");
   }

@@ -434,7 +434,7 @@ resellerRouter.post("/agencies", async (req: AuthRequest, res, next) => {
   try {
     await requireReseller(req.user!.id);
     const saved = await saveAgencyProfile(req.user!.id, req.body ?? {});
-    await writeAuditLog({
+    void writeAuditLog({
       actorId: req.user!.id,
       actorEmail: req.user!.email,
       action: "reseller.agency.saved",
@@ -452,7 +452,7 @@ resellerRouter.put("/agencies/:id", async (req: AuthRequest, res, next) => {
   try {
     await requireReseller(req.user!.id);
     const saved = await saveAgencyProfile(req.user!.id, { ...(req.body ?? {}), id: req.params.id });
-    await writeAuditLog({
+    void writeAuditLog({
       actorId: req.user!.id,
       actorEmail: req.user!.email,
       action: "reseller.agency.saved",
@@ -484,7 +484,7 @@ resellerRouter.delete("/agencies/:id", async (req: AuthRequest, res, next) => {
 
 resellerRouter.get("/agencies/:id/download", async (req: AuthRequest, res, next) => {
   try {
-    await requireReseller(req.user!.id);
+    // Entitlement is verified inside agencyDownloadHtml (lightweight).
     const kind = req.query.kind === "agency" ? "agency" : "sales";
     const file = await agencyDownloadHtml(req.user!.id, req.params.id, kind);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
