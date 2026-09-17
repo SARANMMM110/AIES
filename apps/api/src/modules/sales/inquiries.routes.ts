@@ -10,6 +10,7 @@ import { COMPLETE_SUITE_SLUG } from "../catalog/catalog.routes";
 import { sendNotification } from "../email/notifications";
 import { notifyAdmins } from "../notifications/notify";
 import { env } from "../../config/env";
+import { createTtlCache } from "../../lib/ttl-cache";
 
 function clean(value: unknown, max: number) {
   if (typeof value !== "string") return null;
@@ -18,6 +19,17 @@ function clean(value: unknown, max: number) {
 }
 
 export const salesInquiriesRouter = Router();
+
+const inquiriesListCache = createTtlCache<{
+  aes: unknown[];
+  reseller: unknown[];
+  note: string;
+  suiteSlug: string;
+}>(20_000);
+
+function bustInquiriesCache() {
+  inquiriesListCache.clear();
+}
 
 salesInquiriesRouter.post(
   "/",
@@ -79,15 +91,16 @@ salesInquiriesRouter.post(
           message: clean(body.message, 1000),
         },
       });
+      bustInquiriesCache();
 
-      await writeAuditLog({
+      // Fire-and-forget side effects — do not block the sales form response.
+      void writeAuditLog({
         action: "sales.inquiry.created",
         entityType: "SalesInquiry",
         entityId: row.id,
         metadata: { email, productId, bundleId, interest },
       });
-
-      await sendNotification({
+      void sendNotification({
         type: "sales_inquiry",
         to: env.AES_INQUIRY_NOTIFY_EMAIL,
         data: {
@@ -100,9 +113,8 @@ salesInquiriesRouter.post(
           message: row.message,
         },
       });
-
       const agencyLabel = interest || "an agency";
-      await notifyAdmins({
+      void notifyAdmins({
         type: "sales_inquiry",
         title: `New agency request: ${agencyLabel}`,
         body: `${firstName} ${lastName} (${email}) sent purchase details.`,
@@ -122,55 +134,71 @@ salesInquiriesRouter.get("/", authenticate, requireAdmin, async (req: AuthReques
   try {
     const status = typeof req.query.status === "string" ? req.query.status : "";
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    const rows = await prisma.salesInquiry.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(q
-          ? {
-              OR: [
-                { email: { contains: q, mode: "insensitive" } },
-                { firstName: { contains: q, mode: "insensitive" } },
-                { lastName: { contains: q, mode: "insensitive" } },
-                { company: { contains: q, mode: "insensitive" } },
-                { interest: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      include: {
-        product: { select: { id: true, name: true, slug: true } },
-        bundle: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            items: { select: { productId: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-    });
+    const unfiltered = !status && !q;
 
-    const resellerLeads = await prisma.resellerInquiry.findMany({
-      where: q
+    if (unfiltered) {
+      const cached = inquiriesListCache.get();
+      if (cached) {
+        res.setHeader("Cache-Control", "private, max-age=10");
+        res.json(ok(cached));
+        return;
+      }
+    }
+
+    const inquiryWhere = {
+      ...(status ? { status } : {}),
+      ...(q
         ? {
             OR: [
-              { email: { contains: q, mode: "insensitive" } },
-              { firstName: { contains: q, mode: "insensitive" } },
-              { lastName: { contains: q, mode: "insensitive" } },
-              { company: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" as const } },
+              { firstName: { contains: q, mode: "insensitive" as const } },
+              { lastName: { contains: q, mode: "insensitive" as const } },
+              { company: { contains: q, mode: "insensitive" as const } },
+              { interest: { contains: q, mode: "insensitive" as const } },
             ],
           }
-        : {},
-      include: {
-        profile: { select: { title: true, product: { select: { name: true } } } },
-        offer: { select: { title: true } },
-        reseller: { select: { email: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
+        : {}),
+    };
+
+    const resellerWhere = q
+      ? {
+          OR: [
+            { email: { contains: q, mode: "insensitive" as const } },
+            { firstName: { contains: q, mode: "insensitive" as const } },
+            { lastName: { contains: q, mode: "insensitive" as const } },
+            { company: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+
+    const [rows, resellerLeads] = await Promise.all([
+      prisma.salesInquiry.findMany({
+        where: inquiryWhere,
+        include: {
+          product: { select: { id: true, name: true, slug: true } },
+          bundle: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              items: { select: { productId: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 150,
+      }),
+      prisma.resellerInquiry.findMany({
+        where: resellerWhere,
+        include: {
+          profile: { select: { title: true, product: { select: { name: true } } } },
+          offer: { select: { title: true } },
+          reseller: { select: { email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+    ]);
 
     const emails = [...new Set(rows.map((row) => row.email.toLowerCase()))];
     const matchedUsers = emails.length
@@ -217,26 +245,28 @@ salesInquiriesRouter.get("/", authenticate, requireAdmin, async (req: AuthReques
       };
     });
 
-    res.json(
-      ok({
-        aes,
-        reseller: resellerLeads.map((row) => ({
-          id: row.id,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          email: row.email,
-          phone: row.phone,
-          company: row.company,
-          message: row.message,
-          createdAt: row.createdAt,
-          interest: row.profile?.title || row.offer?.title || "Reseller lead",
-          product: row.profile?.product?.name || null,
-          resellerEmail: row.reseller.email,
-        })),
-        note: "New leads need an account. Existing customers: open their access list and enable the requested agency.",
-        suiteSlug: COMPLETE_SUITE_SLUG,
-      })
-    );
+    const payload = {
+      aes,
+      reseller: resellerLeads.map((row) => ({
+        id: row.id,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        email: row.email,
+        phone: row.phone,
+        company: row.company,
+        message: row.message,
+        createdAt: row.createdAt,
+        interest: row.profile?.title || row.offer?.title || "Reseller lead",
+        product: row.profile?.product?.name || null,
+        resellerEmail: row.reseller.email,
+      })),
+      note: "New leads need an account. Existing customers: open their access list and enable the requested agency.",
+      suiteSlug: COMPLETE_SUITE_SLUG,
+    };
+
+    if (unfiltered) inquiriesListCache.set(payload);
+    res.setHeader("Cache-Control", "private, max-age=10");
+    res.json(ok(payload));
   } catch (err) {
     next(err);
   }
@@ -251,11 +281,9 @@ salesInquiriesRouter.patch("/:id", authenticate, requireAdmin, async (req: AuthR
     const row = await prisma.salesInquiry.update({
       where: { id: req.params.id },
       data: { status },
-      include: {
-        product: { select: { name: true, slug: true } },
-        bundle: { select: { name: true, slug: true } },
-      },
+      select: { id: true, status: true, updatedAt: true },
     });
+    bustInquiriesCache();
     res.json(ok(row));
   } catch (err) {
     next(err);

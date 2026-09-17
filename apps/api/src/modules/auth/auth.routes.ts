@@ -8,6 +8,7 @@ import { ok, toPublicUser } from "../../utils/response";
 import { validate } from "../../middleware/validate";
 import {
   authenticate,
+  clearAuthMemo,
   hashToken,
   signAccessToken,
   type AuthRequest,
@@ -114,6 +115,7 @@ authRouter.post("/logout", authenticate, async (req: AuthRequest, res, next) => 
         where: { tokenHash: hashToken(req.token), revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      clearAuthMemo(req.token);
     }
     res.json(ok({ message: "Logged out" }));
   } catch (err) {

@@ -16,6 +16,7 @@ import {
   clearAdminCache,
   fetchAdminCached,
   readAdminCache,
+  writeAdminCache,
 } from "@/lib/admin-list-cache";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -66,13 +67,19 @@ export default function AdminBundlesPage() {
   }, []);
 
   async function publish(id: string, on: boolean) {
+    const previous = bundles;
+    const nextStatus = on ? "ACTIVE" : "DRAFT";
+    setBundles((rows) => rows.map((row) => (row.id === id ? { ...row, status: nextStatus } : row)));
     setBusyId(id);
     setError(null);
     try {
       await apiFetch(`/api/bundles/${id}/${on ? "publish" : "unpublish"}`, { method: "POST" });
       clearAdminCache(ADMIN_CACHE_KEYS.bundles);
-      await load(true);
+      writeAdminCache(ADMIN_CACHE_KEYS.bundles, {
+        bundles: previous.map((row) => (row.id === id ? { ...row, status: nextStatus } : row)),
+      });
     } catch (err) {
+      setBundles(previous);
       setError(err instanceof ApiClientError ? err.message : "Update failed");
     } finally {
       setBusyId(null);

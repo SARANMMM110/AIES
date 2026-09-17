@@ -27,8 +27,20 @@ export interface JwtPayload {
   sid?: string;
 }
 
+/** Short-lived memo so rapid UI clicks don't each pay a Supabase round-trip. */
+const authMemo = new Map<string, { at: number; user: AuthUser }>();
+const AUTH_MEMO_MS = 25_000;
+
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+export function clearAuthMemo(token?: string | null) {
+  if (!token) {
+    authMemo.clear();
+    return;
+  }
+  authMemo.delete(hashToken(token));
 }
 
 export function signAccessToken(payload: JwtPayload): string {
@@ -45,6 +57,46 @@ function extractBearer(req: Request): string | null {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return null;
   return header.slice(7).trim() || null;
+}
+
+const userSelect = {
+  id: true,
+  email: true,
+  role: true,
+  firstName: true,
+  lastName: true,
+  isActive: true,
+  createdAt: true,
+} as const;
+
+async function resolveUser(token: string, payload: JwtPayload): Promise<AuthUser> {
+  if (payload.sid) {
+    const session = await prisma.session.findUnique({
+      where: { id: payload.sid },
+      include: { user: { select: userSelect } },
+    });
+    if (
+      !session ||
+      session.revokedAt ||
+      session.expiresAt < new Date() ||
+      session.tokenHash !== hashToken(token)
+    ) {
+      throw new AppError(401, "Session expired or revoked", "SESSION_INVALID");
+    }
+    if (!session.user.isActive) {
+      throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
+    }
+    return session.user;
+  }
+
+  const row = await prisma.user.findUnique({
+    where: { id: payload.sub },
+    select: userSelect,
+  });
+  if (!row || !row.isActive) {
+    throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
+  }
+  return row;
 }
 
 export async function authenticate(
@@ -65,55 +117,21 @@ export async function authenticate(
       throw new AppError(401, "Invalid or expired token", "INVALID_TOKEN");
     }
 
-    let user: AuthUser | undefined;
+    const memoKey = hashToken(token);
+    const hit = authMemo.get(memoKey);
+    if (hit && Date.now() - hit.at < AUTH_MEMO_MS) {
+      req.token = token;
+      req.user = hit.user;
+      next();
+      return;
+    }
 
-    if (payload.sid) {
-      // One round-trip: session + user (Supabase latency dominates when split).
-      const session = await prisma.session.findUnique({
-        where: { id: payload.sid },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              role: true,
-              firstName: true,
-              lastName: true,
-              isActive: true,
-              createdAt: true,
-            },
-          },
-        },
-      });
-      if (
-        !session ||
-        session.revokedAt ||
-        session.expiresAt < new Date() ||
-        session.tokenHash !== hashToken(token)
-      ) {
-        throw new AppError(401, "Session expired or revoked", "SESSION_INVALID");
-      }
-      if (!session.user.isActive) {
-        throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
-      }
-      user = session.user;
-    } else {
-      const row = await prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          firstName: true,
-          lastName: true,
-          isActive: true,
-          createdAt: true,
-        },
-      });
-      if (!row || !row.isActive) {
-        throw new AppError(401, "User not found or inactive", "USER_INACTIVE");
-      }
-      user = row;
+    const user = await resolveUser(token, payload);
+    authMemo.set(memoKey, { at: Date.now(), user });
+    // Bound memo size (admin UIs click rapidly; avoid unbounded growth).
+    if (authMemo.size > 500) {
+      const oldest = authMemo.keys().next().value;
+      if (oldest) authMemo.delete(oldest);
     }
 
     req.token = token;
@@ -145,58 +163,23 @@ export async function optionalAuthenticate(
       return;
     }
 
-    if (payload.sid) {
-      const session = await prisma.session.findUnique({
-        where: { id: payload.sid },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              role: true,
-              firstName: true,
-              lastName: true,
-              isActive: true,
-              createdAt: true,
-            },
-          },
-        },
-      });
-      if (
-        !session ||
-        session.revokedAt ||
-        session.expiresAt < new Date() ||
-        session.tokenHash !== hashToken(token) ||
-        !session.user.isActive
-      ) {
-        next();
-        return;
-      }
+    const memoKey = hashToken(token);
+    const hit = authMemo.get(memoKey);
+    if (hit && Date.now() - hit.at < AUTH_MEMO_MS) {
       req.token = token;
-      req.user = session.user;
+      req.user = hit.user;
       next();
       return;
     }
 
-    const row = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        firstName: true,
-        lastName: true,
-        isActive: true,
-        createdAt: true,
-      },
-    });
-    if (!row || !row.isActive) {
-      next();
-      return;
+    try {
+      const user = await resolveUser(token, payload);
+      authMemo.set(memoKey, { at: Date.now(), user });
+      req.token = token;
+      req.user = user;
+    } catch {
+      // guest
     }
-
-    req.token = token;
-    req.user = row;
     next();
   } catch (err) {
     next(err);

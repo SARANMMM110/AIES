@@ -14,6 +14,7 @@ import {
   clearAdminCache,
   fetchAdminCached,
   readAdminCache,
+  writeAdminCache,
 } from "@/lib/admin-list-cache";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -91,13 +92,21 @@ export default function AdminWikiPage() {
   }, []);
 
   async function setArticleStatus(id: string, action: "publish" | "unpublish" | "archive") {
+    const nextStatus =
+      action === "publish" ? "PUBLISHED" : action === "unpublish" ? "DRAFT" : "ARCHIVED";
+    const previous = articles;
+    setArticles((rows) => rows.map((row) => (row.id === id ? { ...row, status: nextStatus } : row)));
     setBusyId(id);
     setError(null);
     try {
       await apiFetch(`/api/wiki/admin/articles/${id}/${action}`, { method: "POST" });
       clearAdminCache(ADMIN_CACHE_KEYS.wikiArticles);
-      await load({ force: true });
+      writeAdminCache(ADMIN_CACHE_KEYS.wikiArticles, {
+        articles: previous.map((row) => (row.id === id ? { ...row, status: nextStatus } : row)),
+        categories,
+      });
     } catch (err) {
+      setArticles(previous);
       setError(err instanceof ApiClientError ? err.message : "Update failed");
     } finally {
       setBusyId(null);

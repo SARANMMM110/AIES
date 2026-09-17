@@ -37,6 +37,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       fetchAdminCached(ADMIN_CACHE_KEYS.products, "/api/products"),
       fetchAdminCached(ADMIN_CACHE_KEYS.bundles, "/api/bundles"),
       fetchAdminCached(ADMIN_CACHE_KEYS.wikiArticles, "/api/wiki/admin/articles"),
+      fetchAdminCached(ADMIN_CACHE_KEYS.inquiries, "/api/sales/inquiries"),
     ]);
   }, [user]);
 

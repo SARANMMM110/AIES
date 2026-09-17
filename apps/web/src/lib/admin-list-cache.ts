@@ -87,4 +87,5 @@ export const ADMIN_CACHE_KEYS = {
   bundles: "bundles",
   wikiArticles: "wiki-articles",
   customers: "customers",
+  inquiries: "inquiries",
 } as const;
