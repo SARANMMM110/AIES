@@ -507,7 +507,7 @@ function wordpressErrorMessage(status: number, payload: unknown): string {
 }
 
 /** Convert full AES sales HTML into a WordPress Custom HTML block (real sales page, not an iframe). */
-function salesHtmlForWordPress(fullHtml: string): string {
+function salesHtmlForWordPress(fullHtml: string, asHomepage: boolean): string {
   const styles = [...fullHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
     .map((match) => match[1])
     .join("\n");
@@ -515,7 +515,27 @@ function salesHtmlForWordPress(fullHtml: string): string {
   let body = bodyMatch?.[1] || fullHtml;
   // Drop outer chrome that breaks inside a WP theme layout.
   body = body.replace(/<\/?(html|head|body)[^>]*>/gi, "");
-  const styleTag = styles.trim() ? `<style>\n${styles}\n</style>\n` : "";
+  // Hide WordPress theme header/nav/footer so the sales page fills the domain.
+  const chromeHide = `
+html, body { margin: 0 !important; padding: 0 !important; background: #0b1220; }
+.wp-site-blocks > header,
+.wp-site-blocks > footer,
+.site-header, .site-footer, .site-branding, .main-navigation,
+#masthead, #colophon, #site-header, #site-navigation, #site-footer,
+.wp-block-template-part, .entry-header, .entry-footer,
+.page-header, .post-navigation, .nav-links, .breadcrumb,
+#wpadminbar { display: none !important; }
+#page, #content, .site, .site-content, .content-area, .entry-content,
+.wp-site-blocks, .wp-block-post-content, .wp-block-group,
+main, article, .hentry {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+${asHomepage ? "body.home .entry-title, body.page .entry-title, h1.entry-title { display: none !important; }" : ""}
+`;
+  const styleTag = `<style>\n${chromeHide}\n${styles}\n</style>\n`;
   return `<!-- wp:html -->\n${styleTag}${body}\n<!-- /wp:html -->`;
 }
 
@@ -573,16 +593,41 @@ async function readWpPayload(response: Response): Promise<WpPagePayload | WpPage
   }
 }
 
+async function setWordPressHomepage(site: URL, auth: string, pageId: number) {
+  const settingsUrl = new URL("/wp-json/wp/v2/settings", site.origin);
+  const response = await wordpressRequest(settingsUrl, auth, "POST", {
+    show_on_front: "page",
+    page_on_front: pageId,
+  });
+  if (!response.ok) {
+    const payload = await readWpPayload(response);
+    throw new AppError(
+      400,
+      wordpressErrorMessage(response.status, payload) ||
+        "Sales page was created, but WordPress did not allow setting it as the homepage. Use an Administrator account.",
+      "WORDPRESS_HOMEPAGE",
+      { status: response.status }
+    );
+  }
+}
+
 export async function publishAgencyToWordPress(
   userId: string,
   id: string,
-  input: { siteUrl?: string; username?: string; appPassword?: string }
+  input: {
+    siteUrl?: string;
+    username?: string;
+    appPassword?: string;
+    /** When true, set this sales page as the WordPress site homepage (domain root). */
+    asHomepage?: boolean;
+  }
 ) {
   const row = await ownedProfile(userId, id, "sales");
   const site = await assertPublicHttps(String(input.siteUrl || row.wordpressUrl || ""));
   const username = clean(input.username, 80);
   // Application passwords are often copied with spaces — WordPress ignores whitespace.
   const appPassword = clean(input.appPassword, 120)?.replace(/\s+/g, "") || null;
+  const asHomepage = input.asHomepage !== false; // default: deploy on domain root
   if (!username || !appPassword) {
     throw new AppError(
       400,
@@ -601,7 +646,7 @@ export async function publishAgencyToWordPress(
 
   // Build the real branded sales page HTML (same as Download sales page).
   const downloaded = await agencyDownloadHtml(userId, id, "sales");
-  const content = salesHtmlForWordPress(downloaded.html);
+  const content = salesHtmlForWordPress(downloaded.html, asHomepage);
   const slug = wordpressPageSlug(row.slug, row.product.slug);
   const pageTitle = `${row.product.name} Sales Page`;
   const auth = Buffer.from(`${username}:${appPassword}`, "utf8").toString("base64");
@@ -626,10 +671,11 @@ export async function publishAgencyToWordPress(
     : await wordpressRequest(new URL("/wp-json/wp/v2/pages", site.origin), auth, "POST", pageBody);
 
   const payload = (await readWpPayload(response)) as WpPagePayload | null;
-  const pageLink =
+  const pageId = payload?.id ?? existingPage?.id ?? null;
+  let pageLink =
     (payload?.link && String(payload.link)) ||
     (payload?.guid?.rendered && String(payload.guid.rendered)) ||
-    (payload?.id ? `${site.origin}/?page_id=${payload.id}` : null) ||
+    (pageId ? `${site.origin}/?page_id=${pageId}` : null) ||
     `${site.origin}/${slug}/`;
 
   if (!response.ok || !pageLink) {
@@ -637,6 +683,11 @@ export async function publishAgencyToWordPress(
       status: response.status,
       code: payload?.code ?? null,
     });
+  }
+
+  if (asHomepage && pageId) {
+    await setWordPressHomepage(site, auth, pageId);
+    pageLink = `${site.origin}/`;
   }
 
   const saved = await prisma.resellerAgencyProfile.update({

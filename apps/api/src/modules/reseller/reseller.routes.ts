@@ -503,14 +503,15 @@ resellerRouter.post("/agencies/:id/wordpress", async (req: AuthRequest, res, nex
       siteUrl: body.siteUrl,
       username: body.username,
       appPassword: body.appPassword,
+      asHomepage: body.asHomepage !== false,
     });
-    await writeAuditLog({
+    void writeAuditLog({
       actorId: req.user!.id,
       actorEmail: req.user!.email,
       action: "reseller.agency.wordpress",
       entityType: "ResellerAgencyProfile",
       entityId: saved.id,
-      metadata: { wordpressPageUrl: saved.wordpressPageUrl },
+      metadata: { wordpressPageUrl: saved.wordpressPageUrl, asHomepage: body.asHomepage !== false },
     });
     res.json(ok(serializeProfile(saved)));
   } catch (err) {

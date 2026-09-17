@@ -92,6 +92,7 @@ function BrandingForm() {
   const [notice, setNotice] = useState<string | null>(null);
   const [wpUser, setWpUser] = useState("");
   const [wpPassword, setWpPassword] = useState("");
+  const [wpAsHomepage, setWpAsHomepage] = useState(true);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState<"sales" | "agency" | null>(null);
   const [uploading, setUploading] = useState<"logo" | "favicon" | null>(null);
@@ -314,15 +315,22 @@ function BrandingForm() {
     try {
       const result = await apiFetch<Saved>(`/api/reseller/agencies/${saved.id}/wordpress`, {
         method: "POST",
-        body: JSON.stringify({ siteUrl: form.wordpressUrl, username: wpUser, appPassword: wpPassword }),
+        body: JSON.stringify({
+          siteUrl: form.wordpressUrl,
+          username: wpUser,
+          appPassword: wpPassword,
+          asHomepage: wpAsHomepage,
+        }),
       });
       setSaved(result);
       setWpPassword("");
-      const msg = result.wordpressPageUrl
-        ? `Published to WordPress: ${result.wordpressPageUrl}`
-        : "WordPress page created.";
+      const msg = wpAsHomepage
+        ? `Sales page deployed on domain: ${result.wordpressPageUrl || form.wordpressUrl}`
+        : result.wordpressPageUrl
+          ? `Published to WordPress: ${result.wordpressPageUrl}`
+          : "WordPress page created.";
       setNotice(msg);
-      showToast("Published to WordPress.", "success");
+      showToast(wpAsHomepage ? "Deployed on domain homepage." : "Published to WordPress.", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "WordPress publish failed";
       setError(message);
@@ -561,13 +569,28 @@ function BrandingForm() {
                   autoComplete="new-password"
                 />
               </label>
+              <label style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+                <input
+                  type="checkbox"
+                  checked={wpAsHomepage}
+                  onChange={(e) => setWpAsHomepage(e.target.checked)}
+                  style={{ marginTop: "0.2rem" }}
+                />
+                <span>
+                  Deploy as homepage on this domain
+                  <span className="reseller-note" style={{ display: "block", marginTop: 4 }}>
+                    Sales page opens at your domain root (https://yoursite.com/). Requires an
+                    Administrator application password.
+                  </span>
+                </span>
+              </label>
               <button
                 className="btn ghost"
                 type="button"
                 disabled={!saved || busy}
                 onClick={() => void publishWordPress()}
               >
-                Publish sales page to WordPress
+                {wpAsHomepage ? "Deploy sales page on domain" : "Publish sales page to WordPress"}
               </button>
               {saved?.wordpressPageUrl ? <p className="success">WordPress page: {saved.wordpressPageUrl}</p> : null}
             </section>

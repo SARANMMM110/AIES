@@ -48,6 +48,7 @@ export default function EntitlementsPage() {
   const [wpSiteUrl, setWpSiteUrl] = useState("");
   const [wpUser, setWpUser] = useState("");
   const [wpPassword, setWpPassword] = useState("");
+  const [wpAsHomepage, setWpAsHomepage] = useState(true);
   const [wpBusy, setWpBusy] = useState(false);
   const [wpError, setWpError] = useState<string | null>(null);
 
@@ -68,6 +69,7 @@ export default function EntitlementsPage() {
     setWpSiteUrl(row.wordpressUrl || "");
     setWpUser("");
     setWpPassword("");
+    setWpAsHomepage(true);
     setWpError(null);
   }
 
@@ -91,11 +93,16 @@ export default function EntitlementsPage() {
           siteUrl: wpSiteUrl.trim(),
           username: wpUser.trim(),
           appPassword: wpPassword,
+          asHomepage: wpAsHomepage,
         }),
       });
       setRows((current) => current.map((row) => (row.id === result.id ? { ...row, ...result } : row)));
       showToast(
-        result.wordpressPageUrl ? "Published to WordPress." : "WordPress page created.",
+        wpAsHomepage
+          ? "Sales page deployed on your domain homepage."
+          : result.wordpressPageUrl
+            ? "Sales page published to WordPress."
+            : "WordPress page created.",
         "success"
       );
       setWpTarget(null);
@@ -228,9 +235,9 @@ export default function EntitlementsPage() {
               >
                 <h3 id="wp-modal-title">Link sales page to WordPress</h3>
                 <p>
-                  Publish the branded <strong>sales page</strong> for{" "}
-                  <strong>{wpTarget.title}</strong> onto your WordPress site. Use an Application
-                  Password from WordPress → Users → Profile (sent once, not stored).
+                  Deploy the branded <strong>sales page</strong> for{" "}
+                  <strong>{wpTarget.title}</strong> on your WordPress domain. Use an Application
+                  Password from WordPress → Users → Profile (Administrator required for homepage).
                 </p>
                 <label>
                   WordPress site link
@@ -261,13 +268,34 @@ export default function EntitlementsPage() {
                     required
                   />
                 </label>
+                <label style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start", fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={wpAsHomepage}
+                    onChange={(e) => setWpAsHomepage(e.target.checked)}
+                    style={{ marginTop: "0.2rem" }}
+                  />
+                  <span>
+                    Deploy as homepage on this domain
+                    <span className="reseller-meta" style={{ display: "block", fontWeight: 500 }}>
+                      Opens at https://yoursite.com/ (hides WordPress header/menu). Uncheck to keep a
+                      sub-page URL.
+                    </span>
+                  </span>
+                </label>
                 {wpError ? <p className="error">{wpError}</p> : null}
                 <div className="reseller-modal-actions">
                   <button className="btn ghost" type="button" disabled={wpBusy} onClick={closeWordPress}>
                     Cancel
                   </button>
                   <button className="btn lime" type="submit" disabled={wpBusy}>
-                    {wpBusy ? "Publishing sales page…" : "Publish sales page"}
+                    {wpBusy
+                      ? wpAsHomepage
+                        ? "Deploying to domain…"
+                        : "Publishing sales page…"
+                      : wpAsHomepage
+                        ? "Deploy on domain"
+                        : "Publish sales page"}
                   </button>
                 </div>
               </form>
