@@ -301,7 +301,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
       }
     }
 
-    const rows = purchases.map(serializePurchase);
+    const rows: ReturnType<typeof serializePurchase>[] = purchases.map(serializePurchase);
 
     // Admin grants / provisioned access often have no Purchase row — still show them
     // (including the user's first unlocked agency) in purchase history.
@@ -328,6 +328,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
         refundedAt: null,
         createdAt: access.createdAt,
         updatedAt: access.updatedAt,
+        user: undefined,
         items: [
           {
             id: access.id,
@@ -337,7 +338,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
             product: null,
             bundle: access.bundle
               ? { id: access.bundle.id, name: access.bundle.name, slug: access.bundle.slug }
-              : null,
+              : { id: access.bundleId, name: "Bundle", slug: null },
           },
         ],
       });
@@ -368,6 +369,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
         refundedAt: null,
         createdAt: access.createdAt,
         updatedAt: access.updatedAt,
+        user: undefined,
         items: [
           {
             id: access.id,
@@ -376,9 +378,7 @@ purchasesRouter.get("/me", authenticate, async (req: AuthRequest, res, next) => 
             price: 0,
             product: access.product
               ? { id: access.product.id, name: access.product.name, slug: access.product.slug }
-              : access.productId
-                ? { id: access.productId, name: null, slug: null }
-                : null,
+              : { id: access.productId, name: "Agency", slug: null },
             bundle: null,
           },
         ],
