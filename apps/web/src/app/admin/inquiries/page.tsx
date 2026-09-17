@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ProductCard";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
+import { flashToast } from "@/components/Toast";
 import { apiFetch } from "@/lib/api";
 import {
   ADMIN_CACHE_KEYS,
@@ -166,9 +167,12 @@ export default function AdminInquiriesPage() {
         reseller: resellerLeads,
         note,
       });
+      flashToast(`Inquiry marked ${status.toLowerCase().replace(/_/g, " ")}.`, "success");
     } catch (err) {
       setAes(previous);
-      setError(err instanceof Error ? err.message : "Could not update status");
+      const message = err instanceof Error ? err.message : "Could not update status";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusyId(null);
     }

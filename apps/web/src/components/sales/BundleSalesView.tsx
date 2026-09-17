@@ -40,27 +40,44 @@ export function BundleSalesView({ bundle, agencies }: Props) {
 
       <main>
         <section className="catalog-hero" aria-labelledby="bundle-hero-title">
-          <div className="container catalog-hero-inner">
-            <p className="catalog-kicker">
-              {bundle.isCompleteSuite ? "Complete Platform" : "Agency Bundle"}
-            </p>
-            <h1 id="bundle-hero-title">
-              {bundle.name}
-              <span> {bundle.tagline}</span>
-            </h1>
-            <p className="catalog-hero-lead">
-              {bundle.description ||
-                bundle.shortDescription ||
-                `${bundle.agencyCount} agencies, ${bundle.serviceCount} services, and ${bundle.workflowCount} guided workflows in one pack.`}
-            </p>
-            <div className="catalog-hero-actions">
-              <ScrollToPurchase className="btn lime">
-                Purchase this pack →
-              </ScrollToPurchase>
-              <Link className="btn outline catalog-hero-outline" href="/sales">
-                Browse catalog
-              </Link>
+          <div className="container catalog-hero-inner catalog-bundle-hero">
+            <div className="catalog-bundle-hero-copy">
+              <p className="catalog-kicker">
+                {bundle.isCompleteSuite ? "Complete Platform" : "Agency Bundle"}
+              </p>
+              <h1 id="bundle-hero-title">
+                {bundle.name}
+                <span> {bundle.tagline}</span>
+              </h1>
+              <p className="catalog-hero-lead">
+                {bundle.description ||
+                  bundle.shortDescription ||
+                  `${bundle.agencyCount} agencies, ${bundle.serviceCount} services, and ${bundle.workflowCount} guided workflows in one pack.`}
+              </p>
+              <div className="catalog-hero-actions">
+                <ScrollToPurchase className="btn lime">
+                  Purchase this pack →
+                </ScrollToPurchase>
+                <Link className="btn outline catalog-hero-outline" href="/sales">
+                  Browse catalog
+                </Link>
+              </div>
             </div>
+            {bundle.thumbnailUrl ? (
+              <div className="catalog-bundle-hero-media">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={bundle.thumbnailUrl}
+                  alt={`${bundle.name} thumbnail`}
+                  width={960}
+                  height={640}
+                />
+              </div>
+            ) : bundle.icon ? (
+              <div className="catalog-bundle-hero-media catalog-bundle-hero-fallback" aria-hidden>
+                <span>{bundle.icon}</span>
+              </div>
+            ) : null}
           </div>
         </section>
 

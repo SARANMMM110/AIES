@@ -268,6 +268,21 @@ export function SalesCatalogView({ agencies, bundles, suite, totals }: Props) {
                   key={bundle.slug}
                   className={`cat-bundle${bundle.isCompleteSuite ? " is-suite" : ""}`}
                 >
+                  {bundle.thumbnailUrl ? (
+                    <div className="cat-bundle-media">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={bundle.thumbnailUrl}
+                        alt=""
+                        width={640}
+                        height={360}
+                      />
+                    </div>
+                  ) : bundle.icon ? (
+                    <div className="cat-bundle-media cat-bundle-media-fallback" aria-hidden>
+                      <span>{bundle.icon}</span>
+                    </div>
+                  ) : null}
                   <p className="cat-bundle-label">
                     {bundle.isCompleteSuite ? "Complete Suite" : "Bundle"}
                   </p>

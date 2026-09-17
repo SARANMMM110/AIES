@@ -1294,6 +1294,30 @@ html[data-theme="dark"] .data-table tbody tr[aria-selected="true"] {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.bundle-price-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.bundle-price-row label {
+  min-width: 0;
+}
+
+.bundle-price-row input,
+.bundle-price-row select {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .bundle-price-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .field-help {
   display: block;
   margin-top: 0.25rem;
@@ -1452,6 +1476,47 @@ html[data-theme="dark"] .data-table tbody tr[aria-selected="true"] {
   color: var(--accent);
   margin: 0;
   font-size: 0.9rem;
+}
+
+.aes-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 120;
+  transform: translateX(-50%) translateY(1.25rem);
+  padding: 0.8rem 1.25rem;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.92rem;
+  font-weight: 650;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  max-width: min(92vw, 440px);
+  text-align: center;
+  line-height: 1.35;
+}
+
+.aes-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.aes-toast-success {
+  background: color-mix(in srgb, var(--lime, #d9f464) 90%, #102010);
+  color: #132214;
+}
+
+.aes-toast-error {
+  background: #b42318;
+  color: #fff;
+}
+
+.aes-toast-info {
+  background: var(--fg);
+  color: var(--bg);
 }
 
 .muted {

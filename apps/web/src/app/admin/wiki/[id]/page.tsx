@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
+import { flashToast } from "@/components/Toast";
 import { apiFetch, ApiClientError } from "@/lib/api";
 
 type Category = { id: string; name: string; slug: string };
@@ -196,6 +197,7 @@ export default function AdminWikiEditorPage() {
           body: JSON.stringify(payload),
         });
         setMsg("Draft created");
+        flashToast("Wiki article created.", "success");
         router.replace(`/admin/wiki/${data.article.id}`);
       } else {
         await apiFetch(`/api/wiki/admin/articles/${params.id}`, {
@@ -203,9 +205,12 @@ export default function AdminWikiEditorPage() {
           body: JSON.stringify(payload),
         });
         setMsg("Saved");
+        flashToast("Wiki article saved.", "success");
       }
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Save failed");
+      const message = err instanceof ApiClientError ? err.message : "Save failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }

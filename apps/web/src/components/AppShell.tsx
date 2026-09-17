@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ToastBanner, useShellToast } from "@/components/Toast";
 
 const USER_LINKS = [
   {
@@ -93,6 +94,7 @@ export function AppShell({
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [canResell, setCanResell] = useState(false);
+  const { toast } = useShellToast();
 
   useEffect(() => {
     if (!user || variant === "admin") {
@@ -156,6 +158,7 @@ export function AppShell({
 
   return (
     <div className={`shell ${navOpen ? "nav-open" : ""}`}>
+      <ToastBanner toast={toast} />
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">AES</span>

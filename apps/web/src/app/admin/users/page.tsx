@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
+import { flashToast } from "@/components/Toast";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -65,9 +66,13 @@ export default function AdminUsersPage() {
         message?: string;
       }>(`/api/users/${row.id}`, { method: "DELETE" });
       setNotice(result.message || (result.deleted ? "Customer deleted." : "Customer removed."));
+      flashToast(result.message || (result.deleted ? "Customer deleted." : "Customer removed."), "success");
     } catch (err) {
       setCustomers(previous);
-      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Delete failed");
+      const message =
+        err instanceof ApiClientError || err instanceof Error ? err.message : "Delete failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusyId(null);
     }

@@ -43,6 +43,20 @@ export default async function BundlesIndexPage() {
             <div className="service-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
               {catalog.bundles.map((bundle) => (
                 <div key={bundle.slug} className="service">
+                  {bundle.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={bundle.thumbnailUrl}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        aspectRatio: "16 / 9",
+                        objectFit: "cover",
+                        borderRadius: 12,
+                        marginBottom: 10,
+                      }}
+                    />
+                  ) : null}
                   <b>{bundle.name}</b>
                   <p className="service-desc">
                     {bundle.agencyCount} agencies · {formatMoney(bundle.priceCents, bundle.currency)}

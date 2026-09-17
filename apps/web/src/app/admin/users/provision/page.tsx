@@ -6,6 +6,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
+import { flashToast } from "@/components/Toast";
 import { apiFetch, ApiClientError } from "@/lib/api";
 
 type ProductOpt = {
@@ -104,8 +105,14 @@ function ProvisionInner() {
         agencies: result.agencies.map((a) => a.name),
       });
       setCopied(false);
+      flashToast("Customer account created.", "success");
     } catch (err) {
-      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Could not create account");
+      const message =
+        err instanceof ApiClientError || err instanceof Error
+          ? err.message
+          : "Could not create account";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }

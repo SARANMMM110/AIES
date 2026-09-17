@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
-import { apiFetch, ApiClientError } from "@/lib/api";
+import { flashToast } from "@/components/Toast";
+import { apiFetch, ApiClientError, getClientApiBase, getToken } from "@/lib/api";
 import {
   ADMIN_CACHE_KEYS,
   clearAdminCache,
@@ -28,6 +29,35 @@ interface ProductRow {
 }
 
 type ProductsPayload = { products: ProductRow[] };
+type DownloadKind = "sales" | "agency";
+
+async function downloadProductHtml(slug: string, kind: DownloadKind) {
+  const token = getToken();
+  if (!token) throw new Error("Sign in required");
+  const path =
+    kind === "sales"
+      ? `/api/products/${encodeURIComponent(slug)}/export/sales-page?format=json`
+      : `/api/products/${encodeURIComponent(slug)}/export/standalone?format=json`;
+  const res = await fetch(`${getClientApiBase()}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = (await res.json()) as {
+    success?: boolean;
+    data?: { html?: string };
+    error?: { message?: string };
+  };
+  if (!res.ok || !json.success || !json.data?.html) {
+    throw new ApiClientError(json.error?.message || "Download failed", res.status);
+  }
+  const filename = kind === "sales" ? `${slug}-sales-page.html` : `${slug}-agency.html`;
+  const blob = new Blob([json.data.html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminProductsPage() {
   const cached = readAdminCache<ProductsPayload>(ADMIN_CACHE_KEYS.products);
@@ -35,6 +65,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [downloadKey, setDownloadKey] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
     Record<string, { price: string; currency: string; status: string }>
   >({});
@@ -101,10 +132,34 @@ export default function AdminProductsPage() {
       });
       clearAdminCache(ADMIN_CACHE_KEYS.products);
       await load(true);
+      flashToast("Product saved.", "success");
     } catch (err) {
-      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Save failed");
+      const message =
+        err instanceof ApiClientError || err instanceof Error ? err.message : "Save failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function downloadHtml(product: ProductRow, kind: DownloadKind) {
+    const key = `${product.id}:${kind}`;
+    setDownloadKey(key);
+    setError(null);
+    try {
+      await downloadProductHtml(product.slug, kind);
+      flashToast(
+        kind === "sales" ? "Sales page HTML downloaded." : "Agency page HTML downloaded.",
+        "success"
+      );
+    } catch (err) {
+      const message =
+        err instanceof ApiClientError || err instanceof Error ? err.message : "Download failed";
+      setError(message);
+      flashToast(message, "error");
+    } finally {
+      setDownloadKey(null);
     }
   }
 
@@ -113,7 +168,7 @@ export default function AdminProductsPage() {
       <AdminShell>
         <PageHeader
           title="Products"
-          subtitle="Manage agency pricing, currency, and publish state."
+          subtitle="Manage agency pricing, currency, and publish state. Open or download the sales page and agency page for each product."
         />
         {error ? <p className="error">{error}</p> : null}
         <div className="panel">
@@ -141,6 +196,8 @@ export default function AdminProductsPage() {
                       currency: "USD",
                       status: product.status,
                     };
+                    const salesBusy = downloadKey === `${product.id}:sales`;
+                    const agencyBusy = downloadKey === `${product.id}:agency`;
                     return (
                       <tr key={product.id}>
                         <td>
@@ -187,7 +244,7 @@ export default function AdminProductsPage() {
                         </td>
                         <td>{product.workflowCount ?? 0}</td>
                         <td>
-                          <div className="row-actions">
+                          <div className="row-actions" style={{ flexWrap: "wrap", maxWidth: 420 }}>
                             <button
                               type="button"
                               className="btn lime btn-sm"
@@ -202,8 +259,32 @@ export default function AdminProductsPage() {
                               target="_blank"
                               rel="noreferrer"
                             >
-                              Preview
+                              Sales page
                             </Link>
+                            <Link
+                              className="btn ghost btn-sm"
+                              href={`/products/${product.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Agency page
+                            </Link>
+                            <button
+                              type="button"
+                              className="btn ghost btn-sm"
+                              disabled={!!downloadKey}
+                              onClick={() => void downloadHtml(product, "sales")}
+                            >
+                              {salesBusy ? "…" : "Sales HTML"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost btn-sm"
+                              disabled={!!downloadKey}
+                              onClick={() => void downloadHtml(product, "agency")}
+                            >
+                              {agencyBusy ? "…" : "Agency HTML"}
+                            </button>
                           </div>
                         </td>
                       </tr>

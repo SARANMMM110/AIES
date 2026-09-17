@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ToastBanner, consumeFlashToast, useShellToast } from "@/components/Toast";
 import { ADMIN_CACHE_KEYS, fetchAdminCached } from "@/lib/admin-list-cache";
 import "./admin-shell.css";
 
@@ -29,6 +30,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/admin";
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const { toast, showToast } = useShellToast();
+
+  // Re-consume flash toasts when navigating between admin pages.
+  useEffect(() => {
+    const flash = consumeFlashToast();
+    if (flash) showToast(flash.message, flash.tone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   // Warm caches one-at-a-time so we don't stampede the DB pool on login.
   useEffect(() => {
@@ -68,6 +77,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`admin-shell ${navOpen ? "nav-open" : ""}`}>
+      <ToastBanner toast={toast} />
       <aside className="admin-shell-sidebar">
         <Link href="/admin" className="admin-shell-brand" onClick={() => setNavOpen(false)}>
           <span className="admin-shell-mark" aria-hidden>

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/ProductCard";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
+import { flashToast } from "@/components/Toast";
 import { apiFetch } from "@/lib/api";
 import { useClientPagination } from "@/hooks/useClientPagination";
 
@@ -121,9 +122,12 @@ function AdminUserAccessInner() {
       });
       await markInquiryContacted();
       setNotice("Agency enabled for this customer. It will appear on their Products page.");
+      flashToast("Agency enabled for this customer.", "success");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Grant failed");
+      const message = err instanceof Error ? err.message : "Grant failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }
@@ -142,9 +146,12 @@ function AdminUserAccessInner() {
       });
       await markInquiryContacted();
       setNotice("Bundle enabled for this customer.");
+      flashToast("Bundle enabled for this customer.", "success");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Grant failed");
+      const message = err instanceof Error ? err.message : "Grant failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }
@@ -155,9 +162,12 @@ function AdminUserAccessInner() {
     setError(null);
     try {
       await apiFetch(`/api/access/products/${accessId}/revoke`, { method: "POST" });
+      flashToast("Agency access revoked.", "success");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Revoke failed");
+      const message = err instanceof Error ? err.message : "Revoke failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }
@@ -168,9 +178,12 @@ function AdminUserAccessInner() {
     setError(null);
     try {
       await apiFetch(`/api/access/bundles/${accessId}/revoke`, { method: "POST" });
+      flashToast("Bundle access revoked.", "success");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Revoke failed");
+      const message = err instanceof Error ? err.message : "Revoke failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }

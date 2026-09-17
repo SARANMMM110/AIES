@@ -470,18 +470,36 @@ export function PurchaseSelector({
             const ownsThis = Boolean(ownedBundles[bundle.slug]);
             return (
               <div key={bundle.slug} className="purchase-suite-card">
-                <div>
-                  <h3>{bundle.name}</h3>
-                  <p>
-                    {bundle.agencyCount} agencies · {bundle.serviceCount} services ·{" "}
-                    {bundle.workflowCount} workflows
-                  </p>
-                  <em>{formatMoney(bundle.priceCents, bundle.currency)}</em>
-                  {bundle.savingsCents ? (
-                    <p className="sales-note" style={{ margin: "4px 0 0" }}>
-                      Save {formatMoney(bundle.savingsCents, bundle.currency)} vs individual
-                    </p>
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  {bundle.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={bundle.thumbnailUrl}
+                      alt=""
+                      width={72}
+                      height={48}
+                      style={{
+                        width: 72,
+                        height: 48,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                        flexShrink: 0,
+                      }}
+                    />
                   ) : null}
+                  <div>
+                    <h3>{bundle.name}</h3>
+                    <p>
+                      {bundle.agencyCount} agencies · {bundle.serviceCount} services ·{" "}
+                      {bundle.workflowCount} workflows
+                    </p>
+                    <em>{formatMoney(bundle.priceCents, bundle.currency)}</em>
+                    {bundle.savingsCents ? (
+                      <p className="sales-note" style={{ margin: "4px 0 0" }}>
+                        Save {formatMoney(bundle.savingsCents, bundle.currency)} vs individual
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 {ownsThis ? (
                   <Link className="btn lime" href="/products">

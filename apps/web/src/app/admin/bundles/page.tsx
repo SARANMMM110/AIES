@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ProductCard";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
+import { flashToast } from "@/components/Toast";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import { formatMoney } from "@/lib/purchase";
 import {
@@ -28,6 +29,8 @@ type BundleRow = {
   priceCents: number | null;
   currency: string;
   productCount: number;
+  thumbnailUrl?: string | null;
+  icon?: string | null;
 };
 
 type BundlesPayload = { bundles: BundleRow[] };
@@ -78,9 +81,12 @@ export default function AdminBundlesPage() {
       writeAdminCache(ADMIN_CACHE_KEYS.bundles, {
         bundles: previous.map((row) => (row.id === id ? { ...row, status: nextStatus } : row)),
       });
+      flashToast(on ? "Bundle published." : "Bundle unpublished.", "success");
     } catch (err) {
       setBundles(previous);
-      setError(err instanceof ApiClientError ? err.message : "Update failed");
+      const message = err instanceof ApiClientError ? err.message : "Update failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusyId(null);
     }
@@ -92,9 +98,12 @@ export default function AdminBundlesPage() {
       const data = await apiFetch<{ bundle: BundleRow }>(`/api/bundles/${id}/duplicate`, {
         method: "POST",
       });
+      flashToast("Bundle duplicated.", "success");
       window.location.href = `/admin/bundles/${data.bundle.id}`;
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Duplicate failed");
+      const message = err instanceof ApiClientError ? err.message : "Duplicate failed";
+      setError(message);
+      flashToast(message, "error");
       setBusyId(null);
     }
   }
@@ -106,8 +115,11 @@ export default function AdminBundlesPage() {
       await apiFetch(`/api/bundles/${id}`, { method: "DELETE" });
       clearAdminCache(ADMIN_CACHE_KEYS.bundles);
       await load(true);
+      flashToast("Bundle archived.", "success");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Archive failed");
+      const message = err instanceof ApiClientError ? err.message : "Archive failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusyId(null);
     }
@@ -147,7 +159,42 @@ export default function AdminBundlesPage() {
                   {pager.pageItems.map((b) => (
                     <tr key={b.id}>
                       <td>
-                        <strong title={b.slug}>{b.name}</strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {b.thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={b.thumbnailUrl}
+                              alt=""
+                              width={44}
+                              height={28}
+                              style={{
+                                width: 44,
+                                height: 28,
+                                objectFit: "cover",
+                                borderRadius: 6,
+                                border: "1px solid var(--border, #d5ddd8)",
+                                flexShrink: 0,
+                              }}
+                            />
+                          ) : b.icon ? (
+                            <span
+                              aria-hidden
+                              style={{
+                                width: 44,
+                                height: 28,
+                                display: "grid",
+                                placeItems: "center",
+                                borderRadius: 6,
+                                background: "var(--panel-soft, #eef2ef)",
+                                fontSize: 14,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {b.icon}
+                            </span>
+                          ) : null}
+                          <strong title={b.slug}>{b.name}</strong>
+                        </div>
                       </td>
                       <td>{b.productCount}</td>
                       <td>{formatMoney(b.priceCents, b.currency)}</td>

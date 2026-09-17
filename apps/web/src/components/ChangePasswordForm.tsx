@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { apiFetch, ApiClientError } from "@/lib/api";
+import { flashToast } from "@/components/Toast";
 
 export function ChangePasswordForm({ compact = false }: { compact?: boolean }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -17,7 +18,9 @@ export function ChangePasswordForm({ compact = false }: { compact?: boolean }) {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match");
+      const msg = "New password and confirmation do not match";
+      setError(msg);
+      flashToast(msg, "error");
       return;
     }
 
@@ -31,8 +34,14 @@ export function ChangePasswordForm({ compact = false }: { compact?: boolean }) {
       setNewPassword("");
       setConfirmPassword("");
       setMessage("Password updated.");
+      flashToast("Password updated.", "success");
     } catch (err) {
-      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Could not update password");
+      const msg =
+        err instanceof ApiClientError || err instanceof Error
+          ? err.message
+          : "Could not update password";
+      setError(msg);
+      flashToast(msg, "error");
     } finally {
       setBusy(false);
     }

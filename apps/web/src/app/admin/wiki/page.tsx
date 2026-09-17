@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
 import { TablePagination } from "@/components/TablePagination";
 import { ToolLoadingPulse } from "@/components/ToolLoadingPulse";
+import { flashToast } from "@/components/Toast";
 import { apiFetch, ApiClientError } from "@/lib/api";
 import {
   ADMIN_CACHE_KEYS,
@@ -105,9 +106,19 @@ export default function AdminWikiPage() {
         articles: previous.map((row) => (row.id === id ? { ...row, status: nextStatus } : row)),
         categories,
       });
+      flashToast(
+        action === "publish"
+          ? "Article published."
+          : action === "unpublish"
+            ? "Article unpublished."
+            : "Article archived.",
+        "success"
+      );
     } catch (err) {
       setArticles(previous);
-      setError(err instanceof ApiClientError ? err.message : "Update failed");
+      const message = err instanceof ApiClientError ? err.message : "Update failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusyId(null);
     }

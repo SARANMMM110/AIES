@@ -6,8 +6,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Protected } from "@/components/Protected";
-import { apiFetch, ApiClientError } from "@/lib/api";
 import { formatMoney } from "@/lib/purchase";
+import { flashToast } from "@/components/Toast";
+import { apiFetch, ApiClientError } from "@/lib/api";
+import { ADMIN_CACHE_KEYS, clearAdminCache } from "@/lib/admin-list-cache";
 
 type ProductOption = {
   id: string;
@@ -180,10 +182,24 @@ export function BundleEditorPage({ mode }: { mode: "new" | "edit" }) {
         saved = pub.bundle;
       }
 
+      flashToast(
+        publishAfter || saved.status === "ACTIVE"
+          ? mode === "new"
+            ? "Bundle created and published."
+            : "Bundle saved and published."
+          : mode === "new"
+            ? "Bundle created."
+            : "Bundle saved.",
+        "success"
+      );
+      clearAdminCache(ADMIN_CACHE_KEYS.bundles);
       router.push(`/admin/bundles/${saved.id}`);
       if (mode === "edit") applyBundle(saved);
     } catch (err) {
-      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Save failed");
+      const message =
+        err instanceof ApiClientError || err instanceof Error ? err.message : "Save failed";
+      setError(message);
+      flashToast(message, "error");
     } finally {
       setBusy(false);
     }
@@ -258,9 +274,9 @@ export function BundleEditorPage({ mode }: { mode: "new" | "edit" }) {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 12 }}>
+            <div className="bundle-price-row">
               <label>
-                Price ({currency})
+                Price ({currency || "USD"})
                 <input
                   type="number"
                   min={0}
@@ -272,11 +288,18 @@ export function BundleEditorPage({ mode }: { mode: "new" | "edit" }) {
               </label>
               <label>
                 Currency
-                <input
+                <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                  maxLength={3}
-                />
+                >
+                  {Array.from(
+                    new Set([currency || "USD", "USD", "EUR", "GBP", "INR", "AUD", "CAD", "SGD"])
+                  ).map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -301,6 +324,32 @@ export function BundleEditorPage({ mode }: { mode: "new" | "edit" }) {
                 placeholder="https://…"
               />
             </label>
+            {thumbnailUrl.trim() ? (
+              <div
+                style={{
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  border: "1px solid var(--border, #d5ddd8)",
+                  background: "var(--panel-soft, #eef2ef)",
+                  aspectRatio: "16 / 9",
+                  maxWidth: 360,
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={thumbnailUrl.trim()}
+                  alt="Bundle thumbnail preview"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.opacity = "0.35";
+                  }}
+                />
+              </div>
+            ) : (
+              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                Shown on the sales catalog and bundle sales page.
+              </p>
+            )}
             <label>
               Status
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
