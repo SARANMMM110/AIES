@@ -49,11 +49,22 @@ cd /var/www/AIES
 bash deploy/native-deploy.sh
 ```
 
-## 4. Seed admin (once)
+## 4. Seed admin, packs, and Agency Wiki (once — or re-run if sales/wiki are empty)
 
 ```bash
 cd /var/www/AIES
+# Do not set SEED_* to empty strings in .env (blank overrides defaults and can abort seed).
 pnpm db:seed
+# Expect logs: "Agency Wiki seeded", "Suite bundle", pack lines, then
+# "Seed complete: N ACTIVE bundles, M wiki articles"
+pm2 restart aes-api   # clears 60s catalog cache
+```
+
+Wiki-only refresh (if packs already exist):
+
+```bash
+pnpm --filter @aes/database seed:wiki
+pm2 restart aes-api
 ```
 
 ## 5. SSL
@@ -84,7 +95,21 @@ cp .env.production .env   # if secrets changed
 pnpm install --frozen-lockfile
 pnpm build
 pnpm db:migrate
+# Re-seed if /sales has no packs or /admin/wiki is empty
+pnpm db:seed
 pm2 restart aes-api aes-web
+```
+
+### Sales packs empty / Agency Wiki empty in admin
+
+Both come from an incomplete seed (or blank `SEED_USER_EMAIL=` / `SEED_ADMIN_EMAIL=` aborting early). After pulling latest:
+
+```bash
+cd /var/www/AIES
+pnpm db:seed
+pm2 restart aes-api
+curl -s http://127.0.0.1:4000/api/catalog | head -c 400
+# bundles array should include ai-enterprise-studio-complete-suite
 ```
 
 ## Useful PM2

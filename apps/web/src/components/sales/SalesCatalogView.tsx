@@ -260,7 +260,10 @@ export function SalesCatalogView({ agencies, bundles, suite, totals }: Props) {
               <p>Published packs only. Draft combinations stay admin-only until they go live.</p>
             </header>
             <div className="cat-bundle-rail">
-              {bundles.map((bundle) => (
+              {bundles.length === 0 ? (
+                <p className="cat-bundle-body">No published packs yet. Check back soon.</p>
+              ) : (
+                bundles.map((bundle) => (
                 <article
                   key={bundle.slug}
                   className={`cat-bundle${bundle.isCompleteSuite ? " is-suite" : ""}`}
@@ -287,7 +290,8 @@ export function SalesCatalogView({ agencies, bundles, suite, totals }: Props) {
                     View pack →
                   </Link>
                 </article>
-              ))}
+              ))
+              )}
             </div>
           </div>
         </section>

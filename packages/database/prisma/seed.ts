@@ -237,10 +237,13 @@ async function upsertAgencyProduct(entry: (typeof AGENCY_CATALOG)[number]) {
 
 async function main() {
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@aies.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "Admin123!ChangeMe";
-  const userEmail = process.env.SEED_USER_EMAIL ?? "user@aies.local";
-  const userPassword = process.env.SEED_USER_PASSWORD ?? "User123!ChangeMe";
+  const adminEmail =
+    process.env.SEED_ADMIN_EMAIL?.trim() || "admin@aies.local";
+  const adminPassword =
+    process.env.SEED_ADMIN_PASSWORD?.trim() || "Admin123!ChangeMe";
+  const userEmail = process.env.SEED_USER_EMAIL?.trim() || "user@aies.local";
+  const userPassword =
+    process.env.SEED_USER_PASSWORD?.trim() || "User123!ChangeMe";
 
   const adminHash = await bcrypt.hash(adminPassword, saltRounds);
   const userHash = await bcrypt.hash(userPassword, saltRounds);
@@ -593,6 +596,10 @@ async function main() {
       icon: "▣",
     },
   });
+
+  const bundleCount = await prisma.bundle.count({ where: { status: "ACTIVE" } });
+  const wikiCount = await prisma.wikiArticle.count();
+  console.log(`Seed complete: ${bundleCount} ACTIVE bundles, ${wikiCount} wiki articles`);
 }
 
 main()

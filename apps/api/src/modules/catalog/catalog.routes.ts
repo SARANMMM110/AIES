@@ -222,18 +222,26 @@ async function buildCatalogPayload() {
       isCompleteSuite: true,
     } satisfies BundleRow);
 
+  // Always expose suite in the packs list (even when DB has no ACTIVE bundles yet).
+  const bundlesForClient =
+    bundles.length > 0
+      ? bundles.some((b) => b.slug === COMPLETE_SUITE_SLUG)
+        ? bundles
+        : [suite, ...bundles]
+      : [suite];
+
   const body = ok({
     agencies,
-    bundles,
+    bundles: bundlesForClient,
     suite,
     totals: {
       products: agencies.length,
       services: serviceCount,
       workflows: workflowCount,
-      bundles: bundles.length,
+      bundles: bundlesForClient.length,
     },
   });
-  return { agencies, bundles, body };
+  return { agencies, bundles: bundlesForClient, body };
 }
 
 catalogRouter.get("/", async (_req, res, next) => {

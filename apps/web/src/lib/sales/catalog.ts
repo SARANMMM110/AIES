@@ -112,7 +112,13 @@ export const fetchSalesCatalog = cache(async (): Promise<CatalogPayload> => {
   const data = await fetchCatalogJson<CatalogPayload>("/api/catalog");
   return {
     ...data,
-    bundles: data.bundles ?? (data.suite ? [data.suite] : []),
+    // Empty array must not hide the suite fallback (?? only treats null/undefined).
+    bundles:
+      data.bundles?.length > 0
+        ? data.bundles
+        : data.suite
+          ? [data.suite]
+          : [],
   };
 });
 
